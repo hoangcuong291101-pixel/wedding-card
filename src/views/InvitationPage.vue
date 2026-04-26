@@ -5,8 +5,8 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import RevealOnScroll from '@/components/RevealOnScroll.vue'
+import { useGuests } from '@/composables/useGuests'
 import { useLazyLoad } from '@/composables/useLazyLoad'
-import { guests } from '@/data/guests'
 import { weddingInfo } from '@/data/wedding'
 
 import 'swiper/css'
@@ -15,6 +15,7 @@ import 'swiper/css/pagination'
 type FamilySide = 'bride' | 'groom'
 
 const route = useRoute()
+const { guests } = useGuests()
 
 const isOpened = ref(false)
 const activeFamilySide = ref<FamilySide>('groom')
@@ -23,7 +24,7 @@ const { elRef: galleryRef, isVisible: showGallery } = useLazyLoad()
 const slug = computed(() => String(route.params.slug || ''))
 
 const guest = computed(() => {
-  return guests.find((item) => item.slug === slug.value)
+  return guests.value.find((item) => item.slug === slug.value)
 })
 
 const activeFamily = computed(() => {
@@ -38,6 +39,10 @@ function openInvitation() {
 
 function selectFamilySide(side: FamilySide) {
   activeFamilySide.value = side
+}
+
+function guestSideLabel() {
+  return guest.value?.side === 'bride' ? 'Khách nhà gái' : 'Khách nhà trai'
 }
 </script>
 
@@ -79,7 +84,7 @@ function selectFamilySide(side: FamilySide) {
       <Transition name="content">
         <section v-if="guest && isOpened" class="mx-auto min-h-screen w-full max-w-[560px] py-4">
           <div class="invitation-shell rounded-[2.2rem] px-6 py-9 text-center">
-            <RevealOnScroll as="section" :delay="180" class="ornament-panel rounded-[1.6rem] px-6 py-8">
+            <RevealOnScroll as="section" :delay="220" direction="left" class="ornament-panel rounded-[1.6rem] px-6 py-8">
               <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">Save the date</p>
 
               <h1 class="mt-4 text-5xl text-[#654742] title-script">
@@ -87,13 +92,33 @@ function selectFamilySide(side: FamilySide) {
                 <span class="mx-2 inline-block text-3xl">&</span>
                 {{ weddingInfo.brideName }}
               </h1>
+            </RevealOnScroll>
 
-              <p class="mx-auto mt-6 max-w-[360px] text-sm leading-7 text-[#7f6b62]">
-                Đến dự buổi tiệc chung vui cùng gia đình chúng tôi trong ngày trọng đại này.
+            <RevealOnScroll as="section" :delay="320" direction="right" class="mt-7 rounded-[1.6rem] bg-[#fff8f0] p-5 ring-1 ring-[#f0dfd3]">
+              <p class="text-sm text-[#7b6666]">Trân trọng kính mời</p>
+
+              <h2 class="mt-2 font-serif text-3xl font-semibold text-[#5d4440]">
+                {{ guest.name }}
+              </h2>
+
+              <p class="mt-1 text-xs uppercase tracking-[0.22em] text-[#b17e3a]">
+                {{ guestSideLabel() }}
               </p>
             </RevealOnScroll>
 
-            <RevealOnScroll as="section" :delay="260" class="mt-7 rounded-3xl bg-[#fffaf4] p-5 text-left ring-1 ring-[#efdfd3]">
+            <RevealOnScroll as="section" :delay="430" direction="left" class="mt-7 rounded-[1.6rem] bg-[#fff8f0] p-5 ring-1 ring-[#f0dfd3]">
+              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thời gian</p>
+
+              <p class="mt-2 font-serif text-2xl font-semibold text-[#64453e]">
+                {{ weddingInfo.weddingDate }}
+              </p>
+
+              <p class="mt-2 text-sm leading-6 text-[#7b6666]">
+                {{ weddingInfo.venue.note }}
+              </p>
+            </RevealOnScroll>
+
+            <RevealOnScroll as="section" :delay="540" direction="right" class="mt-7 rounded-3xl bg-[#fffaf4] p-5 text-left ring-1 ring-[#efdfd3]">
               <p class="text-center font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
                 Lịch trình
               </p>
@@ -103,7 +128,7 @@ function selectFamilySide(side: FamilySide) {
                   v-for="(item, index) in weddingInfo.timeline"
                   :key="`${item.time}-${item.title}`"
                   class="timeline-card relative rounded-3xl p-5 pl-7"
-                  :style="{ transitionDelay: `${240 + index * 140}ms` }"
+                  :style="{ transitionDelay: `${300 + index * 170}ms` }"
                 >
                   <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
 
@@ -122,8 +147,34 @@ function selectFamilySide(side: FamilySide) {
               </div>
             </RevealOnScroll>
 
-            <RevealOnScroll as="section" :delay="360" class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]">
-              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thông tin gia đình</p>
+            <RevealOnScroll as="section" :delay="650" direction="left" class="mt-8">
+              <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">Khoảnh khắc</p>
+
+              <div ref="galleryRef" class="mt-4 overflow-hidden rounded-[1.6rem] border border-[#f2e4d8] shadow-lg">
+                <div v-if="!showGallery" class="h-64 animate-pulse rounded-[1.6rem] bg-[#f2dfd8]" />
+
+                <Swiper
+                  v-else
+                  :autoplay="{ delay: 3200, disableOnInteraction: false }"
+                  :loop="true"
+                  :modules="swiperModules"
+                  :pagination="true"
+                  class="w-full"
+                >
+                  <SwiperSlide v-for="image in weddingInfo.galleryImages" :key="image">
+                    <img
+                      :src="image"
+                      alt="Ảnh cưới"
+                      class="h-64 w-full object-cover"
+                      loading="lazy"
+                    />
+                  </SwiperSlide>
+                </Swiper>
+              </div>
+            </RevealOnScroll>
+
+            <RevealOnScroll as="section" :delay="760" direction="right" class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]">
+              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thông tin 2 nhà</p>
 
               <div class="mt-4 grid grid-cols-2 gap-2 rounded-full bg-[#fff4e7] p-1 ring-1 ring-[#ecd8c9]">
                 <button
@@ -181,52 +232,6 @@ function selectFamilySide(side: FamilySide) {
                   </div>
                 </div>
               </Transition>
-            </RevealOnScroll>
-
-            <RevealOnScroll as="section" :delay="460" class="mt-7 rounded-[1.6rem] bg-[#fff8f0] p-5 ring-1 ring-[#f0dfd3]">
-              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thời gian</p>
-
-              <p class="mt-2 font-serif text-2xl font-semibold text-[#64453e]">
-                {{ weddingInfo.weddingDate }}
-              </p>
-
-              <p class="mt-2 text-sm leading-6 text-[#7b6666]">
-                {{ weddingInfo.venue.note }}
-              </p>
-            </RevealOnScroll>
-
-            <RevealOnScroll as="section" :delay="560" class="mt-8">
-              <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">Khoảnh khắc</p>
-
-              <div ref="galleryRef" class="mt-4 overflow-hidden rounded-[1.6rem] border border-[#f2e4d8] shadow-lg">
-                <div v-if="!showGallery" class="h-64 animate-pulse rounded-[1.6rem] bg-[#f2dfd8]" />
-
-                <Swiper
-                  v-else
-                  :autoplay="{ delay: 3200, disableOnInteraction: false }"
-                  :loop="true"
-                  :modules="swiperModules"
-                  :pagination="true"
-                  class="w-full"
-                >
-                  <SwiperSlide v-for="image in weddingInfo.galleryImages" :key="image">
-                    <img
-                      :src="image"
-                      alt="Ảnh cưới"
-                      class="h-64 w-full object-cover"
-                      loading="lazy"
-                    />
-                  </SwiperSlide>
-                </Swiper>
-              </div>
-            </RevealOnScroll>
-
-            <RevealOnScroll as="section" :delay="650" class="mt-8">
-              <p class="text-sm text-[#7b6666]">Trân trọng kính mời</p>
-
-              <h2 class="mt-2 font-serif text-3xl font-semibold text-[#5d4440]">
-                {{ guest.name }}
-              </h2>
             </RevealOnScroll>
           </div>
         </section>
