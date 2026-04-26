@@ -1,10 +1,7 @@
-export const guests = [
-  {
-    slug: 'anh-tuan',
-    name: 'Anh Tuấn',
-  },
-  {
-    slug: 'chi-linh',
-    name: 'Chị Linh',
-  },
-]
+import guestsSeed from '@/data/guests.json'
+
+import type { Guest, GuestSide } from '@/types/invitation'
+
+export type { Guest, GuestSide }
+
+export const guests = guestsSeed as Guest[]
