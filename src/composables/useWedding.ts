@@ -13,7 +13,12 @@ export function useWedding() {
     isLoadingWedding.value = false
   }
 
-  async function updateWedding(payload: Pick<WeddingInfo, 'groomName' | 'brideName' | 'weddingDate' | 'venue'>) {
+  async function updateWedding(
+    payload: Pick<
+      WeddingInfo,
+      'groomName' | 'brideName' | 'weddingDate' | 'venue' | 'families' | 'timelines'
+    >,
+  ) {
     wedding.value = await fakeUpdateWedding(payload)
     return wedding.value
   }

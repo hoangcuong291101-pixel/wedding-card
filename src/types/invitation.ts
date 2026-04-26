@@ -26,6 +26,8 @@ export interface TimelineItem {
 export interface WeddingInfo {
   groomName: string
   brideName: string
+  groomImageUrl?: string
+  brideImageUrl?: string
   backgroundImage: string
   galleryImages: string[]
   families: {
@@ -33,7 +35,10 @@ export interface WeddingInfo {
     bride: FamilyInfo
   }
   weddingDate: string
-  timeline: TimelineItem[]
+  timelines: {
+    groom: TimelineItem[]
+    bride: TimelineItem[]
+  }
   venue: {
     name: string
     note: string

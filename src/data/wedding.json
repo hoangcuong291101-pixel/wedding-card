@@ -1,8 +1,10 @@
 {
   "groomName": "Hoàng Cường",
   "brideName": "Ngọc Ỉn",
+  "groomImageKey": "1",
+  "brideImageKey": "2",
   "backgroundImageKey": "bg",
-  "galleryImageKeys": ["1", "2"],
+  "galleryImageKeys": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"],
   "families": {
     "groom": {
       "label": "Nhà trai",
@@ -22,11 +24,36 @@
     }
   },
   "weddingDate": "09/05/2026 - 10/05/2026",
-  "timeline": [
-    { "time": "09:00", "date": "09/05", "title": "Đón khách", "description": "Đón khách" },
-    { "time": "10:00", "date": "09/05", "title": "Vào tiệc", "description": "Đớp" },
-    { "time": "17:00", "date": "09/05", "title": "Vào tiệc", "description": "Đớp lần 2" }
-  ],
+  "timelines": {
+    "groom": [
+      {
+        "time": "09:00",
+        "date": "09/05",
+        "title": "Đón khách nhà trai",
+        "description": "Đón khách tại nhà trai"
+      },
+      {
+        "time": "10:00",
+        "date": "09/05",
+        "title": "Vào tiệc nhà trai",
+        "description": "Được mời vào tiệc"
+      }
+    ],
+    "bride": [
+      {
+        "time": "17:00",
+        "date": "09/05",
+        "title": "Đón khách nhà gái",
+        "description": "Đón khách tại nhà gái"
+      },
+      {
+        "time": "18:00",
+        "date": "09/05",
+        "title": "Vào tiệc nhà gái",
+        "description": "Được mời vào tiệc"
+      }
+    ]
+  },
   "venue": {
     "name": "Tư gia",
     "note": "Tổ chức tại nhà riêng hai bên gia đình"

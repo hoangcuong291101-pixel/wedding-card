@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Autoplay, Pagination } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import RevealOnScroll from '@/components/RevealOnScroll.vue'
@@ -9,6 +9,11 @@ import { useGuests } from '@/composables/useGuests'
 import { useLazyLoad } from '@/composables/useLazyLoad'
 import { fakeFetchWedding } from '@/services/fakeApi'
 import type { WeddingInfo } from '@/types/invitation'
+import brideImg from '@/assets/images/bride.jpg'
+import groomImg from '@/assets/images/groom.jpg'
+import musicCoverImg from '@/assets/images/music.jpg'
+import instaImg from '@/assets/images/insta.jpg'
+import musicSrc from '@/assets/music.mp3'
 
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -20,6 +25,52 @@ const { guests } = useGuests()
 
 const isOpened = ref(false)
 const activeFamilySide = ref<FamilySide>('groom')
+
+watch(
+  () => guests.value.find((item) => item.slug === slug.value),
+  (g) => {
+    if (g) activeFamilySide.value = g.side === 'bride' ? 'bride' : 'groom'
+  },
+  { immediate: true },
+)
+const audioEl = ref<HTMLAudioElement | null>(null)
+const isPlaying = ref(false)
+const currentTime = ref(0)
+const audioDuration = ref(0)
+
+function togglePlay() {
+  if (!audioEl.value) return
+  if (isPlaying.value) {
+    audioEl.value.pause()
+  } else {
+    audioEl.value.play()
+  }
+  isPlaying.value = !isPlaying.value
+}
+
+function onTimeUpdate() {
+  if (!audioEl.value) return
+  currentTime.value = audioEl.value.currentTime
+}
+
+function onLoadedMetadata() {
+  if (!audioEl.value) return
+  audioDuration.value = audioEl.value.duration
+}
+
+function seekTo(e: Event) {
+  if (!audioEl.value) return
+  const input = e.target as HTMLInputElement
+  audioEl.value.currentTime = Number(input.value)
+  currentTime.value = audioEl.value.currentTime
+}
+
+function formatTime(s: number) {
+  if (!isFinite(s)) return '0:00'
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
 const { elRef: galleryRef, isVisible: showGallery } = useLazyLoad()
 const weddingInfo = ref<WeddingInfo | null>(null)
 
@@ -38,19 +89,82 @@ const activeFamily = computed(() => {
   return weddingInfo.value.families[activeFamilySide.value]
 })
 
+const activeTimeline = computed(() => {
+  if (!weddingInfo.value) return []
+  return weddingInfo.value.timelines[activeFamilySide.value]
+})
+
 const swiperModules = [Autoplay, Pagination]
 
 function openInvitation() {
   isOpened.value = true
+  // Auto-play music after a short delay to let the DOM settle
+  setTimeout(() => {
+    if (audioEl.value) {
+      audioEl.value
+        .play()
+        .then(() => {
+          isPlaying.value = true
+        })
+        .catch(() => {
+          // Browser may block autoplay — user can tap manually
+        })
+    }
+  }, 600)
 }
 
 function selectFamilySide(side: FamilySide) {
   activeFamilySide.value = side
 }
 
-function guestSideLabel() {
-  return guest.value?.side === 'bride' ? 'Khách nhà gái' : 'Khách nhà trai'
+function guestPlaceLabel() {
+  return guest.value?.side === 'bride' ? 'Tại nhà gái' : 'Tại nhà trai'
 }
+
+function parseFromInviteTime(value: string): Date | null {
+  const match = value.match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!match) return null
+  const [, timePart, dd, mm, yyyy] = match
+  if (!timePart) return null
+  const [hour, minute] = timePart.split(':').map(Number)
+  return new Date(Number(yyyy), Number(mm) - 1, Number(dd), hour, minute)
+}
+
+function parseFromWeddingDate(value: string): Date | null {
+  const firstDate = value.split(' - ')[0]?.trim() ?? ''
+  const parts = firstDate.split('/')
+  if (parts.length !== 3) return null
+  const [dd, mm, yyyy] = parts.map(Number)
+  if (!dd || !mm || !yyyy) return null
+  return new Date(yyyy, mm - 1, dd, 8, 0)
+}
+
+const invitationMoment = computed(() => {
+  const fromInvite = guest.value?.inviteTime ? parseFromInviteTime(guest.value.inviteTime) : null
+  const date =
+    fromInvite ?? (weddingInfo.value ? parseFromWeddingDate(weddingInfo.value.weddingDate) : null)
+  if (!date) {
+    return {
+      weekday: 'THỨ BẢY',
+      month: 'THÁNG 4',
+      day: '26',
+      year: '2025',
+      time: '20:00',
+    }
+  }
+
+  return {
+    weekday: new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date).toUpperCase(),
+    month: new Intl.DateTimeFormat('vi-VN', { month: 'long' }).format(date).toUpperCase(),
+    day: String(date.getDate()).padStart(2, '0'),
+    year: String(date.getFullYear()),
+    time: new Intl.DateTimeFormat('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date),
+  }
+})
 </script>
 
 <template>
@@ -58,13 +172,17 @@ function guestSideLabel() {
     class="min-h-screen bg-cover bg-center bg-fixed text-[#3e3431]"
     :style="weddingInfo ? { backgroundImage: `url(${weddingInfo.backgroundImage})` } : undefined"
   >
-    <div class="min-h-screen bg-gradient-to-b from-[#f6f5fb]/94 via-[#fffdfa]/95 to-[#fdf7ef]/95 px-4 py-5">
+    <div
+      class="min-h-screen bg-gradient-to-b from-[#f6f5fb]/94 via-[#fffdfa]/95 to-[#fdf7ef]/95 px-4 py-5"
+    >
       <Transition name="cover">
         <section
           v-if="guest && !isOpened && weddingInfo"
           class="cover-panel mx-auto flex min-h-[92vh] w-full max-w-[520px] flex-col items-center justify-center rounded-[2rem] border border-[#efe4db] bg-white/85 px-7 text-center shadow-[0_26px_65px_-32px_rgba(73,51,49,0.85)]"
         >
-          <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">Wedding Invitation</p>
+          <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">
+            Wedding Invitation
+          </p>
 
           <h1 class="mt-4 text-5xl text-[#6f4f4a] title-script">
             {{ weddingInfo.groomName }}
@@ -89,76 +207,322 @@ function guestSideLabel() {
       </Transition>
 
       <Transition name="content">
-        <section v-if="guest && isOpened && weddingInfo" class="mx-auto min-h-screen w-full max-w-[560px] py-4">
-          <div class="invitation-shell rounded-[2.2rem] px-6 py-9 text-center"
-            :style="{ backgroundImage: `linear-gradient(rgba(255,255,255,0.88), rgba(255,251,246,0.92)), url(${weddingInfo.backgroundImage})` }">
-            <RevealOnScroll as="section" :delay="220" direction="left" class="ornament-panel rounded-[1.6rem] px-6 py-8">
-              <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">Save the date</p>
+        <section
+          v-if="guest && isOpened && weddingInfo"
+          class="mx-auto min-h-screen w-full max-w-[560px] py-4"
+        >
+          <div
+            class="invitation-shell rounded-[2.2rem] px-6 py-9 text-center"
+            :style="{
+              backgroundImage: `linear-gradient(rgba(255,255,255,0.88), rgba(255,251,246,0.92)), url(${weddingInfo.backgroundImage})`,
+            }"
+          >
+            <RevealOnScroll
+              as="section"
+              :delay="220"
+              direction="left"
+              class="simple-panel rounded-[1.6rem] px-6 py-8"
+            >
+              <p class="text-sm uppercase tracking-[0.2em] text-[#8b8078]">
+                Trân trọng kính mời tham dự lễ thành hôn của
+              </p>
 
-              <h1 class="mt-4 text-5xl text-[#654742] title-script">
-                {{ weddingInfo.groomName }}
-                <span class="mx-2 inline-block text-3xl">&</span>
-                {{ weddingInfo.brideName }}
-              </h1>
+              <div
+                class="name-emblem mx-auto mt-6 flex h-56 w-56 flex-col items-center justify-center rounded-full"
+              >
+                <p class="title-script text-5xl text-[#58413f]">{{ weddingInfo.groomName }}</p>
+                <p class="my-1 text-3xl text-[#8f7a76]">&</p>
+                <p class="title-script text-5xl text-[#58413f]">{{ weddingInfo.brideName }}</p>
+              </div>
             </RevealOnScroll>
 
-            <RevealOnScroll as="section" :delay="320" direction="right" class="mt-7 rounded-[1.6rem] bg-[#fff8f0] p-5 ring-1 ring-[#f0dfd3]">
-              <p class="text-sm text-[#7b6666]">Trân trọng kính mời</p>
+            <RevealOnScroll
+              as="section"
+              :delay="320"
+              direction="right"
+              class="mt-7 rounded-[1.6rem] bg-[#fffdfa] p-6 ring-1 ring-[#eee2d6]"
+            >
+              <!-- Top decoration -->
+              <div class="flex items-center justify-center gap-3 text-[#c89a57]">
+                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
+                <div class="text-xl">✦</div>
+                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
+              </div>
 
-              <h2 class="mt-2 font-serif text-3xl font-semibold text-[#5d4440]">
-                {{ guest.name }}
-              </h2>
-
-              <p class="mt-1 text-xs uppercase tracking-[0.22em] text-[#b17e3a]">
-                {{ guestSideLabel() }}
-              </p>
-            </RevealOnScroll>
-
-            <RevealOnScroll as="section" :delay="430" direction="left" class="mt-7 rounded-[1.6rem] bg-[#fff8f0] p-5 ring-1 ring-[#f0dfd3]">
-              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thời gian</p>
-
-              <p class="mt-2 font-serif text-2xl font-semibold text-[#64453e]">
-                {{ guest.inviteTime || weddingInfo.weddingDate }}
+              <p class="mt-4 text-sm font-semibold tracking-[0.18em] text-[#8f7f6f]">
+                {{ invitationMoment.month }}
               </p>
 
-              <p class="mt-2 text-sm leading-6 text-[#7b6666]">
-                {{ weddingInfo.venue.note }}
-              </p>
-            </RevealOnScroll>
-
-            <RevealOnScroll as="section" :delay="540" direction="right" class="mt-7 rounded-3xl bg-[#fffaf4] p-5 text-left ring-1 ring-[#efdfd3]">
-              <p class="text-center font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
-                Lịch trình
-              </p>
-
-              <div class="mt-5 space-y-4">
+              <div class="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                 <div
-                  v-for="(item, index) in weddingInfo.timeline"
-                  :key="`${item.time}-${item.title}`"
-                  class="timeline-card relative rounded-3xl p-5 pl-7"
-                  :style="{ transitionDelay: `${300 + index * 170}ms` }"
+                  class="border-t border-[#d8c7ad] pt-2 text-center text-2xl font-semibold text-[#4d4a46]"
                 >
-                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
+                  {{ invitationMoment.weekday }}
+                </div>
 
-                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">
-                    {{ item.time }}
+                <div class="px-2 text-center">
+                  <p class="text-7xl font-semibold leading-none text-[#8c6ca7]">
+                    {{ invitationMoment.day }}
                   </p>
+                </div>
 
-                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
-                    {{ item.title }}
-                  </h3>
+                <div
+                  class="border-t border-[#d8c7ad] pt-2 text-center text-2xl font-semibold text-[#4d4a46]"
+                >
+                  LÚC {{ invitationMoment.time }}
+                </div>
+              </div>
 
-                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
-                    {{ item.description }}
-                  </p>
+              <p class="mt-3 text-sm font-semibold tracking-[0.16em] text-[#8f7f6f]">
+                {{ invitationMoment.year }}
+              </p>
+
+              <!-- Bottom decoration -->
+              <div class="mt-4 flex items-center justify-center gap-3 text-[#c89a57]">
+                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
+                <div class="text-xl">✦</div>
+                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
+              </div>
+
+              <p class="mt-5 text-s uppercase tracking-[0.22em] text-[#a08070]">
+                Trân trọng kính mời
+              </p>
+              <p class="title-script mt-1 text-7xl leading-none text-[#5b3f3b]">{{ guest.name }}</p>
+              <p class="mt-3 text-s leading-relaxed text-[#7b6666]">Tham dự lễ thành hôn</p>
+              <p class="mt-1 text-s uppercase tracking-[0.22em] text-[#b17e3a]">
+                {{ guestPlaceLabel() }}
+              </p>
+              <p class="mt-3 text-s leading-relaxed text-[#7b6666]">
+                Sự có mặt của bạn là niềm vinh dự cho gia đình chúng tôi
+              </p>
+            </RevealOnScroll>
+            <!-- Music Player -->
+            <RevealOnScroll as="section" :delay="420" direction="right" class="mt-8">
+              <audio
+                ref="audioEl"
+                :src="musicSrc"
+                loop
+                preload="metadata"
+                @timeupdate="onTimeUpdate"
+                @loadedmetadata="onLoadedMetadata"
+                @ended="isPlaying = false"
+              />
+              <div
+                class="mx-auto max-w-sm overflow-hidden rounded-3xl bg-white px-6 pb-6 pt-8 shadow-[0_12px_40px_-16px_rgba(72,33,33,0.3)] ring-1 ring-[#f0dfd4]"
+              >
+                <!-- Rotating album art -->
+                <div class="flex justify-center">
+                  <div
+                    class="relative h-52 w-52 rounded-full"
+                    :class="isPlaying ? 'album-spin' : 'album-paused'"
+                  >
+                    <!-- Outer decorative ring -->
+                    <div class="absolute -inset-2 rounded-full border-2 border-[#d9c8ad]/60" />
+                    <!-- Inner shadow ring -->
+                    <div
+                      class="absolute -inset-0.5 rounded-full shadow-[inset_0_0_20px_rgba(72,33,33,0.15)]"
+                    />
+                    <img
+                      :src="musicCoverImg"
+                      alt="Album art"
+                      class="h-52 w-52 rounded-full object-cover"
+                    />
+                    <!-- Center hole like a vinyl record -->
+                    <div
+                      class="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-inner ring-2 ring-[#d9c8ad]"
+                    />
+                  </div>
+                </div>
+
+                <!-- Song info -->
+                <div class="mt-6 flex items-start justify-between">
+                  <div class="text-left">
+                    <p class="text-base font-bold text-[#1a1a1a]">Nhạc nền đám cưới</p>
+                    <p class="mt-0.5 text-sm text-[#9b8070]">
+                      {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }}
+                    </p>
+                  </div>
+                  <!-- Heart -->
+                  <svg
+                    class="mt-0.5 h-6 w-6 flex-shrink-0 text-[#b83a3a]"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35z"
+                    />
+                  </svg>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="mt-4">
+                  <input
+                    type="range"
+                    class="music-range w-full"
+                    :value="currentTime"
+                    :max="audioDuration || 100"
+                    :style="{
+                      '--pct': audioDuration ? `${(currentTime / audioDuration) * 100}%` : '0%',
+                    }"
+                    step="0.5"
+                    @input="seekTo"
+                  />
+                  <div class="mt-1.5 flex justify-between text-xs text-[#9b8070]">
+                    <span>{{ formatTime(currentTime) }}</span>
+                    <span>{{ formatTime(audioDuration) }}</span>
+                  </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="mt-5 flex items-center justify-between">
+                  <!-- Shuffle (decorative) -->
+                  <button type="button" class="p-1 text-[#9b8070] transition active:scale-90">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path
+                        d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"
+                      />
+                    </svg>
+                  </button>
+                  <!-- Prev (decorative) -->
+                  <button type="button" class="p-1 text-[#3e3431] transition active:scale-90">
+                    <svg class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                    </svg>
+                  </button>
+                  <!-- Play / Pause — main button -->
+                  <button
+                    type="button"
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-[#1a1a1a] text-white shadow-lg transition active:scale-95"
+                    @click="togglePlay"
+                  >
+                    <svg
+                      v-if="!isPlaying"
+                      class="h-7 w-7 translate-x-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <svg v-else class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                    </svg>
+                  </button>
+                  <!-- Next (decorative) -->
+                  <button type="button" class="p-1 text-[#3e3431] transition active:scale-90">
+                    <svg class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z" />
+                    </svg>
+                  </button>
+                  <!-- Repeat (decorative) -->
+                  <button type="button" class="p-1 text-[#9b8070] transition active:scale-90">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </RevealOnScroll>
 
-            <RevealOnScroll as="section" :delay="650" direction="left" class="mt-8">
-              <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">Khoảnh khắc</p>
+            <!-- Bride and Groom Section -->
+            <div class="mx-auto mt-12 max-w-lg space-y-8">
+              <div class="flex items-center justify-center gap-3 text-[#c89a57]">
+                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
+                <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
+                  Khoảnh khắc
+                </p>
+                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
+              </div>
+              <!-- Groom Section: slides in from LEFT -->
+              <RevealOnScroll as="div" :delay="700" direction="left">
+                <div class="relative flex items-center justify-between gap-6">
+                  <!-- Groom Label -->
+                  <div
+                    class="flex flex-shrink-0 flex-col items-center gap-0.5 rounded-[2rem] bg-[#b83a3a] px-3 py-5 shadow-lg"
+                  >
+                    <span
+                      class="font-serif text-xs font-semibold uppercase tracking-widest text-white"
+                      >Chú</span
+                    >
+                    <span
+                      class="font-serif text-xs font-semibold uppercase tracking-widest text-white"
+                      >Rể</span
+                    >
+                    <span class="mt-1 block w-4 border-t border-white/40" />
+                    <span
+                      v-for="word in weddingInfo.groomName.split(' ')"
+                      :key="word"
+                      class="font-serif text-xs font-semibold uppercase tracking-widest text-white"
+                      >{{ word }}</span
+                    >
+                  </div>
 
-              <div ref="galleryRef" class="mt-4 overflow-hidden rounded-[1.6rem] border border-[#f2e4d8] shadow-lg">
+                  <!-- Groom Image -->
+                  <div class="relative inline-block flex-shrink-0">
+                    <div class="absolute -inset-1 rounded-full border-2 border-[#d9c8ad]" />
+                    <img
+                      :src="groomImg"
+                      :alt="weddingInfo.groomName"
+                      class="relative h-72 w-56 rounded-full border-4 border-white object-cover shadow-xl"
+                    />
+                  </div>
+
+                  <!-- Left decoration -->
+                  <div class="absolute left-0 top-1/2 text-2xl text-[#d9c8ad]">✦</div>
+                </div>
+              </RevealOnScroll>
+
+              <!-- Bride Section: slides in from RIGHT -->
+              <RevealOnScroll as="div" :delay="800" direction="right">
+                <div class="relative flex items-center justify-between gap-6">
+                  <!-- Bride Image -->
+                  <div class="relative inline-block flex-shrink-0">
+                    <div class="absolute -inset-1 rounded-full border-2 border-[#d9c8ad]" />
+                    <img
+                      :src="brideImg"
+                      :alt="weddingInfo.brideName"
+                      class="relative h-72 w-56 rounded-full border-4 border-white object-cover shadow-xl"
+                    />
+                  </div>
+
+                  <!-- Bride Label -->
+                  <div
+                    class="flex flex-shrink-0 flex-col items-center gap-0.5 rounded-[2rem] bg-[#b83a3a] px-3 py-5 shadow-lg"
+                  >
+                    <span
+                      class="font-serif text-xs font-semibold uppercase tracking-widest text-white"
+                      >Cô</span
+                    >
+                    <span
+                      class="font-serif text-xs font-semibold uppercase tracking-widest text-white"
+                      >Dâu</span
+                    >
+                    <span class="mt-1 block w-4 border-t border-white/40" />
+                    <span
+                      v-for="word in weddingInfo.brideName.split(' ')"
+                      :key="word"
+                      class="font-serif text-xs font-semibold uppercase tracking-widest text-white"
+                      >{{ word }}</span
+                    >
+                  </div>
+
+                  <!-- Right decoration -->
+                  <div class="absolute right-0 top-1/2 text-2xl text-[#d9c8ad]">✦</div>
+                </div>
+              </RevealOnScroll>
+            </div>
+
+            <RevealOnScroll as="section" :delay="650" direction="left" class="mt-8">
+              <div class="flex items-center justify-center gap-3 text-[#c89a57]">
+                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
+                <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
+                  Khoảnh khắc
+                </p>
+                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
+              </div>
+              <div
+                ref="galleryRef"
+                class="gallery-frame mt-4 overflow-hidden rounded-[1.6rem] border-2 border-[#d4b896] bg-white shadow-lg"
+              >
                 <div v-if="!showGallery" class="h-64 animate-pulse rounded-[1.6rem] bg-[#f2dfd8]" />
 
                 <Swiper
@@ -170,24 +534,121 @@ function guestSideLabel() {
                   class="w-full"
                 >
                   <SwiperSlide v-for="image in weddingInfo.galleryImages" :key="image">
-                    <img
-                      :src="image"
-                      alt="Ảnh cưới"
-                      class="h-64 w-full object-cover"
-                      loading="lazy"
-                    />
+                    <div class="aspect-square w-full overflow-hidden">
+                      <img
+                        :src="image"
+                        alt="Ảnh cưới"
+                        class="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
                   </SwiperSlide>
                 </Swiper>
               </div>
             </RevealOnScroll>
 
-            <RevealOnScroll as="section" :delay="760" direction="right" class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]">
-              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thông tin 2 nhà</p>
+            <!-- Instagram-style post -->
+            <RevealOnScroll as="section" :delay="750" direction="left" class="mt-10">
+              <div
+                class="mx-auto max-w-sm overflow-hidden rounded-2xl bg-white shadow-[0_8px_32px_-12px_rgba(72,33,33,0.3)] ring-1 ring-[#f0dfd4]"
+              >
+                <!-- Post header -->
+                <div class="flex items-center gap-3 px-4 py-3">
+                  <div class="relative h-9 w-9 flex-shrink-0">
+                    <img
+                      :src="groomImg"
+                      alt="avatar"
+                      class="h-9 w-9 rounded-full object-cover ring-2 ring-[#c89a57] ring-offset-1"
+                    />
+                  </div>
+                  <div class="flex flex-1 flex-col text-left">
+                    <p class="text-sm font-semibold leading-none text-[#3e3431]">
+                      {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }}
+                    </p>
+                    <p class="mt-0.5 text-xs text-[#9b8070]">{{ weddingInfo.weddingDate }}</p>
+                  </div>
+                  <!-- Instagram dots -->
+                  <svg class="h-5 w-5 text-[#9b8070]" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="5" cy="12" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="19" cy="12" r="1.5" />
+                  </svg>
+                </div>
 
-              <div class="mt-4 grid grid-cols-2 gap-2 rounded-full bg-[#fff4e7] p-1 ring-1 ring-[#ecd8c9]">
+                <!-- Main photo -->
+                <div class="aspect-square w-full overflow-hidden bg-[#f2dfd8]">
+                  <img :src="instaImg" alt="Ảnh cưới" class="h-full w-full object-cover" />
+                </div>
+
+                <!-- Action bar -->
+                <div class="flex items-center gap-4 px-4 pt-3">
+                  <!-- Heart -->
+                  <svg class="h-6 w-6 text-[#b83a3a]" fill="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35z"
+                    />
+                  </svg>
+                  <!-- Comment -->
+                  <svg
+                    class="h-6 w-6 text-[#9b8070]"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <!-- Share -->
+                  <svg
+                    class="h-6 w-6 text-[#9b8070]"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                <!-- Caption -->
+                <div class="px-4 pb-4 pt-2 text-left">
+                  <p class="text-sm leading-relaxed text-[#3e3431]">
+                    <span class="font-semibold">{{ weddingInfo.groomName }}</span>
+                    {{ ' ' }}Hạnh phúc khi được đón bạn tham dự ngày trọng đại của chúng tôi 🤍
+                  </p>
+                  <p class="mt-1 text-xs text-[#9b8070]">{{ weddingInfo.venue.name }}</p>
+                </div>
+              </div>
+            </RevealOnScroll>
+
+            <RevealOnScroll
+              as="section"
+              :delay="760"
+              direction="right"
+              class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]"
+            >
+              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">
+                Thông tin và lịch trình
+              </p>
+
+              <div
+                class="mt-4 grid grid-cols-2 gap-2 rounded-full bg-[#fff4e7] p-1 ring-1 ring-[#ecd8c9]"
+              >
                 <button
                   class="rounded-full px-4 py-2 text-sm font-medium transition"
-                  :class="activeFamilySide === 'groom' ? 'bg-[#c89a57] text-white shadow' : 'text-[#7b6666]'"
+                  :class="
+                    activeFamilySide === 'groom'
+                      ? 'bg-[#c89a57] text-white shadow'
+                      : 'text-[#7b6666]'
+                  "
                   type="button"
                   @click="selectFamilySide('groom')"
                 >
@@ -196,7 +657,11 @@ function guestSideLabel() {
 
                 <button
                   class="rounded-full px-4 py-2 text-sm font-medium transition"
-                  :class="activeFamilySide === 'bride' ? 'bg-[#c89a57] text-white shadow' : 'text-[#7b6666]'"
+                  :class="
+                    activeFamilySide === 'bride'
+                      ? 'bg-[#c89a57] text-white shadow'
+                      : 'text-[#7b6666]'
+                  "
                   type="button"
                   @click="selectFamilySide('bride')"
                 >
@@ -204,54 +669,92 @@ function guestSideLabel() {
                 </button>
               </div>
 
-              <Transition name="family" mode="out-in">
-                <div v-if="activeFamily" :key="activeFamilySide" class="mt-4 rounded-3xl bg-white/80 p-5 text-left ring-1 ring-[#f3e4d9]">
-                  <p class="font-serif text-lg font-semibold text-[#5a433d]">
-                    {{ activeFamily.label }}
-                  </p>
+              <div class="mt-4">
+                <Transition name="family-switch" mode="out-in">
+                  <div
+                    v-if="activeFamily"
+                    :key="`family-${activeFamilySide}`"
+                    class="rounded-3xl bg-white/80 p-5 text-left ring-1 ring-[#f3e4d9]"
+                  >
+                    <p class="font-serif text-lg font-semibold text-[#5a433d]">
+                      {{ activeFamily.label }}
+                    </p>
 
-                  <p class="mt-3 text-sm leading-6 text-[#7b6666]">
-                    {{ activeFamily.dad }}
-                  </p>
+                    <p class="mt-3 text-sm leading-6 text-[#7b6666]">Ông: {{ activeFamily.dad }}</p>
 
-                  <p class="text-sm leading-6 text-[#7b6666]">
-                    {{ activeFamily.mom }}
-                  </p>
+                    <p class="text-sm leading-6 text-[#7b6666]">Bà : {{ activeFamily.mom }}</p>
 
-                  <p class="mt-3 text-sm leading-6 text-[#7b6666]">
-                    {{ activeFamily.address }}
-                  </p>
+                    <p class="mt-3 text-sm leading-6 text-[#7b6666]">
+                      Tại: {{ activeFamily.address }}
+                    </p>
 
-                  <div class="mt-4 flex gap-2">
-                    <a
-                      :href="`tel:${activeFamily.phone}`"
-                      class="flex-1 rounded-full bg-[#fff8ef] px-4 py-2 text-center text-sm font-medium text-[#a17438] ring-1 ring-[#eed9c4] transition hover:bg-[#fff1de]"
-                    >
-                      Gọi
-                    </a>
+                    <div class="mt-4 flex gap-2">
+                      <a
+                        :href="`tel:${activeFamily.phone}`"
+                        class="flex-1 rounded-full bg-[#fff8ef] px-4 py-2 text-center text-sm font-medium text-[#a17438] ring-1 ring-[#eed9c4] transition hover:bg-[#fff1de]"
+                      >
+                        Gọi
+                      </a>
 
-                    <a
-                      :href="activeFamily.googleMapUrl"
-                      class="flex-1 rounded-full bg-[#c89a57] px-4 py-2 text-center text-sm font-medium text-white shadow transition hover:bg-[#b98b4b]"
-                      target="_blank"
-                    >
-                      Bản đồ
-                    </a>
+                      <a
+                        :href="activeFamily.googleMapUrl"
+                        class="flex-1 rounded-full bg-[#c89a57] px-4 py-2 text-center text-sm font-medium text-white shadow transition hover:bg-[#b98b4b]"
+                        target="_blank"
+                      >
+                        Bản đồ
+                      </a>
+                    </div>
                   </div>
+                </Transition>
+
+                <div class="mt-5 space-y-3 text-left">
+                  <p class="text-sm font-semibold uppercase tracking-[0.2em] text-[#b17e3a]">
+                    Lịch trình {{ activeFamilySide === 'groom' ? 'nhà trai' : 'nhà gái' }}
+                  </p>
+                  <Transition name="side-switch" mode="out-in">
+                    <div :key="activeFamilySide" class="space-y-3">
+                      <div
+                        v-for="(item, index) in activeTimeline"
+                        :key="`${activeFamilySide}-${item.time}-${item.title}-${index}`"
+                        class="timeline-card relative rounded-3xl p-5 pl-7"
+                        :style="{ transitionDelay: `${300 + index * 140}ms` }"
+                      >
+                        <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
+
+                        <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">
+                          {{ item.time }} · {{ item.date }}
+                        </p>
+
+                        <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
+                          {{ item.title }}
+                        </h3>
+
+                        <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                          {{ item.description }}
+                        </p>
+                      </div>
+                    </div>
+                  </Transition>
                 </div>
-              </Transition>
+              </div>
             </RevealOnScroll>
           </div>
         </section>
       </Transition>
 
-      <section v-if="!weddingInfo" class="flex min-h-screen items-center justify-center px-6 text-center">
+      <section
+        v-if="!weddingInfo"
+        class="flex min-h-screen items-center justify-center px-6 text-center"
+      >
         <div class="rounded-3xl bg-white/95 p-6 shadow-lg ring-1 ring-[#f0dad3]">
-          <p class="text-sm text-[#7b6666]">Đang tải dữ liệu thiệp (fake API)...</p>
+          <p class="text-sm text-[#7b6666]">Đang tải ...</p>
         </div>
       </section>
 
-      <section v-else-if="!guest" class="flex min-h-screen items-center justify-center px-6 text-center">
+      <section
+        v-else-if="!guest"
+        class="flex min-h-screen items-center justify-center px-6 text-center"
+      >
         <div class="rounded-3xl bg-white/95 p-6 shadow-lg ring-1 ring-[#f0dad3]">
           <h1 class="font-serif text-2xl font-semibold">Không tìm thấy thiệp mời</h1>
 
@@ -285,16 +788,85 @@ function guestSideLabel() {
 
 .ornament-panel {
   position: relative;
-  background: radial-gradient(circle at 10% 10%, rgba(244, 226, 247, 0.45) 0%, transparent 38%),
-    radial-gradient(circle at 90% 10%, rgba(220, 236, 248, 0.42) 0%, transparent 42%),
-    #fff;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(244, 226, 247, 0.45) 0%, transparent 38%),
+    radial-gradient(circle at 90% 10%, rgba(220, 236, 248, 0.42) 0%, transparent 42%), #fff;
   border: 1px solid #f2e3d6;
+}
+
+.simple-panel {
+  background: #fff;
+  border: 1px solid #f0e3d5;
+}
+
+.gallery-frame {
+  box-shadow:
+    0 8px 24px -12px rgba(104, 58, 58, 0.4),
+    inset 0 0 0 2px rgba(212, 184, 150, 0.3);
+}
+
+.name-emblem {
+  border: 2px solid #d9c8ad;
+  box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.95);
 }
 
 .timeline-card {
   background: #ffffff;
   box-shadow: 0 14px 26px -22px rgba(104, 58, 58, 0.85);
   border: 1px solid #f4e5d8;
+}
+
+.vertical-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.1em;
+}
+
+.music-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #1a1a1a var(--pct, 0%), #e5e5e5 var(--pct, 0%));
+  outline: none;
+  cursor: pointer;
+}
+
+.music-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.music-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #1a1a1a;
+  cursor: pointer;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.album-spin {
+  animation: spin-slow 12s linear infinite;
+}
+
+.album-paused {
+  animation: spin-slow 12s linear infinite;
+  animation-play-state: paused;
 }
 
 .cover-enter-active,
@@ -329,6 +901,42 @@ function guestSideLabel() {
   transform: translateY(-8px);
 }
 
+.side-switch-enter-active,
+.side-switch-leave-active {
+  transition:
+    opacity 0.68s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.68s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.side-switch-enter-from {
+  opacity: 0;
+  transform: translateX(20px) scale(0.985);
+}
+
+.side-switch-leave-to {
+  opacity: 0;
+  transform: translateX(-20px) scale(0.985);
+}
+
+.family-switch-enter-active,
+.family-switch-leave-active {
+  transition:
+    opacity 0.62s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.62s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.family-switch-enter-from {
+  opacity: 0;
+  transform: translateY(14px) scale(0.985);
+}
+
+.family-switch-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.985);
+}
+
 @keyframes floatingIn {
   from {
     opacity: 0;
@@ -347,6 +955,13 @@ function guestSideLabel() {
   .invitation-shell,
   .ornament-panel {
     animation: none !important;
+    transition: none !important;
+  }
+
+  .side-switch-enter-active,
+  .side-switch-leave-active,
+  .family-switch-enter-active,
+  .family-switch-leave-active {
     transition: none !important;
   }
 }

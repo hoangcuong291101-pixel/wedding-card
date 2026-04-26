@@ -5,6 +5,8 @@ declare module '*.jpeg'
 declare module '*.png'
 declare module '*.webp'
 
+declare module '*.mp3'
+
 declare module 'swiper/vue'
 declare module 'swiper/css'
 declare module 'swiper/css/pagination'
