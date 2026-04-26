@@ -90,7 +90,8 @@ function guestSideLabel() {
 
       <Transition name="content">
         <section v-if="guest && isOpened && weddingInfo" class="mx-auto min-h-screen w-full max-w-[560px] py-4">
-          <div class="invitation-shell rounded-[2.2rem] px-6 py-9 text-center">
+          <div class="invitation-shell rounded-[2.2rem] px-6 py-9 text-center"
+            :style="{ backgroundImage: `linear-gradient(rgba(255,255,255,0.88), rgba(255,251,246,0.92)), url(${weddingInfo.backgroundImage})` }">
             <RevealOnScroll as="section" :delay="220" direction="left" class="ornament-panel rounded-[1.6rem] px-6 py-8">
               <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">Save the date</p>
 
@@ -117,7 +118,7 @@ function guestSideLabel() {
               <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thời gian</p>
 
               <p class="mt-2 font-serif text-2xl font-semibold text-[#64453e]">
-                {{ weddingInfo.weddingDate }}
+                {{ guest.inviteTime || weddingInfo.weddingDate }}
               </p>
 
               <p class="mt-2 text-sm leading-6 text-[#7b6666]">
@@ -273,7 +274,9 @@ function guestSideLabel() {
 
 .invitation-shell {
   position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 251, 246, 0.97) 100%);
+  background-color: rgba(255, 255, 255, 0.96);
+  background-size: cover;
+  background-position: center;
   box-shadow:
     0 34px 85px -50px rgba(72, 33, 33, 0.82),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);

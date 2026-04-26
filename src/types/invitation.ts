@@ -4,6 +4,7 @@ export interface Guest {
   slug: string
   name: string
   side: GuestSide
+  inviteTime: string
 }
 
 export interface FamilyInfo {

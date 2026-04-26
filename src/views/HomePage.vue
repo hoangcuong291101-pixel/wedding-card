@@ -1,27 +1,51 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
-import type { Guest, GuestSide } from '@/types/invitation'
 import { useGuests } from '@/composables/useGuests'
+import { useWedding } from '@/composables/useWedding'
+import type { Guest, GuestSide } from '@/types/invitation'
 
 const { guests, upsertGuest, updateGuest, removeGuest } = useGuests()
+const { wedding, isLoadingWedding, loadWedding, updateWedding } = useWedding()
 
 const form = ref({
   slug: '',
   name: '',
   side: 'groom' as GuestSide,
+  inviteTime: '',
+})
+
+const weddingForm = ref({
+  groomName: '',
+  brideName: '',
+  weddingDate: '',
+  venueNote: '',
 })
 
 const editingSlug = ref<string | null>(null)
 const copiedSlug = ref<string | null>(null)
+const weddingSaved = ref(false)
 
 const inviteBase = computed(() => `${window.location.origin}/invite`)
+
+onMounted(async () => {
+  await loadWedding()
+  if (wedding.value) {
+    weddingForm.value = {
+      groomName: wedding.value.groomName,
+      brideName: wedding.value.brideName,
+      weddingDate: wedding.value.weddingDate,
+      venueNote: wedding.value.venue.note,
+    }
+  }
+})
 
 function resetForm() {
   form.value = {
     slug: '',
     name: '',
     side: 'groom',
+    inviteTime: '',
   }
   editingSlug.value = null
 }
@@ -33,6 +57,7 @@ function submitGuest() {
     updateGuest(editingSlug.value, {
       name: form.value.name,
       side: form.value.side,
+      inviteTime: form.value.inviteTime,
       nextSlug: form.value.slug,
     })
   } else {
@@ -40,10 +65,30 @@ function submitGuest() {
       name: form.value.name,
       slug: form.value.slug,
       side: form.value.side,
+      inviteTime: form.value.inviteTime,
     })
   }
 
   resetForm()
+}
+
+async function saveWeddingInfo() {
+  if (!wedding.value) return
+
+  await updateWedding({
+    groomName: weddingForm.value.groomName.trim(),
+    brideName: weddingForm.value.brideName.trim(),
+    weddingDate: weddingForm.value.weddingDate.trim(),
+    venue: {
+      ...wedding.value.venue,
+      note: weddingForm.value.venueNote.trim(),
+    },
+  })
+
+  weddingSaved.value = true
+  window.setTimeout(() => {
+    weddingSaved.value = false
+  }, 1800)
 }
 
 function editGuest(guest: Guest) {
@@ -52,6 +97,7 @@ function editGuest(guest: Guest) {
     slug: guest.slug,
     name: guest.name,
     side: guest.side,
+    inviteTime: guest.inviteTime,
   }
 }
 
@@ -82,11 +128,65 @@ async function copyInviteLink(slug: string) {
 
 <template>
   <main class="min-h-screen bg-[#f6f3ee] px-4 py-8 text-[#3e312e]">
-    <section class="mx-auto w-full max-w-4xl rounded-3xl bg-white p-6 shadow-lg ring-1 ring-[#eddcc8] md:p-8">
-      <header class="mb-6 border-b border-[#efe2d4] pb-4">
-        <h1 class="font-serif text-3xl font-semibold">Quản lý khách mời</h1>
-        <p class="mt-2 text-sm text-[#6f5a54]">Thêm / sửa / xóa khách mời và phân loại theo nhà trai hoặc nhà gái.</p>
+    <section class="mx-auto w-full max-w-5xl space-y-6 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-[#eddcc8] md:p-8">
+      <header class="border-b border-[#efe2d4] pb-4">
+        <h1 class="font-serif text-3xl font-semibold">Quản lý dữ liệu thiệp cưới</h1>
+        <p class="mt-2 text-sm text-[#6f5a54]">Sửa thông tin đám cưới + quản lý khách mời từ một màn hình.</p>
       </header>
+
+      <section class="rounded-2xl bg-[#fffaf5] p-5 ring-1 ring-[#f0dfcf]">
+        <h2 class="font-serif text-xl font-semibold">Thông tin đám cưới</h2>
+
+        <p v-if="isLoadingWedding" class="mt-3 text-sm text-[#7f6a64]">Đang tải dữ liệu...</p>
+
+        <form v-else class="mt-4 grid gap-4 md:grid-cols-2" @submit.prevent="saveWeddingInfo">
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium">Tên chú rể</span>
+            <input
+              v-model="weddingForm.groomName"
+              class="w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 outline-none focus:border-[#c99855]"
+              required
+            />
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium">Tên cô dâu</span>
+            <input
+              v-model="weddingForm.brideName"
+              class="w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 outline-none focus:border-[#c99855]"
+              required
+            />
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium">Ngày cưới</span>
+            <input
+              v-model="weddingForm.weddingDate"
+              class="w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 outline-none focus:border-[#c99855]"
+              required
+            />
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium">Ghi chú địa điểm</span>
+            <input
+              v-model="weddingForm.venueNote"
+              class="w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 outline-none focus:border-[#c99855]"
+              required
+            />
+          </label>
+
+          <div class="md:col-span-2 flex items-center gap-3 pt-1">
+            <button
+              type="submit"
+              class="rounded-xl bg-[#c99855] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#bb8844]"
+            >
+              Lưu thông tin đám cưới
+            </button>
+            <p v-if="weddingSaved" class="text-sm font-semibold text-[#4f8f5a]">Đã lưu thành công</p>
+          </div>
+        </form>
+      </section>
 
       <div class="grid gap-7 md:grid-cols-[320px_1fr]">
         <form class="space-y-4 rounded-2xl bg-[#fffaf5] p-5 ring-1 ring-[#f0dfcf]" @submit.prevent="submitGuest">
@@ -108,6 +208,17 @@ async function copyInviteLink(slug: string) {
               v-model="form.slug"
               class="w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 outline-none focus:border-[#c99855]"
               placeholder="anh-minh"
+            />
+          </label>
+
+
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium">Thời gian mời riêng</span>
+            <input
+              v-model="form.inviteTime"
+              class="w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 outline-none focus:border-[#c99855]"
+              placeholder="Ví dụ: 17:00 - 09/05/2026"
+              required
             />
           </label>
 
@@ -155,6 +266,9 @@ async function copyInviteLink(slug: string) {
                   <p class="mt-1 text-sm text-[#7f6a64]">Slug: {{ guest.slug }}</p>
                   <p class="text-xs uppercase tracking-[0.2em] text-[#b48245]">
                     {{ sideLabel(guest.side) }}
+                  </p>
+                  <p class="text-xs text-[#7f6a64]">
+                    Giờ mời: {{ guest.inviteTime || 'Chưa đặt' }}
                   </p>
                   <p v-if="copiedSlug === guest.slug" class="mt-1 text-xs font-semibold text-[#4f8f5a]">
                     Đã copy link thiệp

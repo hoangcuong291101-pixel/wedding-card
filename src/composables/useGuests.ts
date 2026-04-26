@@ -18,19 +18,28 @@ function slugify(value: string) {
     .replace(/-+/g, '-')
 }
 
+function normalizeGuest(item: Partial<Guest>) {
+  return {
+    slug: item.slug || '',
+    name: item.name || '',
+    side: (item.side as GuestSide) || 'groom',
+    inviteTime: item.inviteTime || '',
+  } satisfies Guest
+}
+
 async function loadGuests() {
   if (hasInitialized.value) return
 
   const raw = localStorage.getItem(STORAGE_KEY)
   if (raw) {
-    const parsed = JSON.parse(raw) as Guest[]
-    guestsState.value = Array.isArray(parsed) ? parsed : []
+    const parsed = JSON.parse(raw) as Partial<Guest>[]
+    guestsState.value = Array.isArray(parsed) ? parsed.map(normalizeGuest) : []
     hasInitialized.value = true
     return
   }
 
   const data = await fakeFetchGuests()
-  guestsState.value = [...data]
+  guestsState.value = data.map(normalizeGuest)
   localStorage.setItem(STORAGE_KEY, JSON.stringify(guestsState.value))
   hasInitialized.value = true
 }
@@ -39,7 +48,7 @@ function persistGuests() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(guestsState.value))
 }
 
-function upsertGuest(payload: { slug?: string; name: string; side: GuestSide }) {
+function upsertGuest(payload: { slug?: string; name: string; side: GuestSide; inviteTime: string }) {
   const nextSlug = slugify(payload.slug || payload.name)
   if (!nextSlug) return
 
@@ -48,6 +57,7 @@ function upsertGuest(payload: { slug?: string; name: string; side: GuestSide }) 
     slug: nextSlug,
     name: payload.name.trim(),
     side: payload.side,
+    inviteTime: payload.inviteTime.trim(),
   }
 
   if (existingIndex >= 0) {
@@ -59,7 +69,10 @@ function upsertGuest(payload: { slug?: string; name: string; side: GuestSide }) 
   persistGuests()
 }
 
-function updateGuest(slug: string, payload: { name: string; side: GuestSide; nextSlug?: string }) {
+function updateGuest(
+  slug: string,
+  payload: { name: string; side: GuestSide; inviteTime: string; nextSlug?: string },
+) {
   const index = guestsState.value.findIndex((item) => item.slug === slug)
   if (index < 0) return
 
@@ -70,6 +83,7 @@ function updateGuest(slug: string, payload: { name: string; side: GuestSide; nex
     slug: finalSlug,
     name: payload.name.trim(),
     side: payload.side,
+    inviteTime: payload.inviteTime.trim(),
   }
 
   persistGuests()
