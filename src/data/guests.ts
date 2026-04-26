@@ -1,20 +1,7 @@
-export type GuestSide = 'bride' | 'groom'
+import guestsSeed from '@/data/guests.json'
 
-export interface Guest {
-  slug: string
-  name: string
-  side: GuestSide
-}
+import type { Guest, GuestSide } from '@/types/invitation'
 
-export const guests: Guest[] = [
-  {
-    slug: 'anh-tuan',
-    name: 'Anh Tuấn',
-    side: 'groom',
-  },
-  {
-    slug: 'chi-linh',
-    name: 'Chị Linh',
-    side: 'bride',
-  },
-]
+export type { Guest, GuestSide }
+
+export const guests = guestsSeed as Guest[]

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { Guest, GuestSide } from '@/data/guests'
+import type { Guest, GuestSide } from '@/types/invitation'
 import { useGuests } from '@/composables/useGuests'
 
 const { guests, upsertGuest, updateGuest, removeGuest } = useGuests()
@@ -13,6 +13,7 @@ const form = ref({
 })
 
 const editingSlug = ref<string | null>(null)
+const copiedSlug = ref<string | null>(null)
 
 const inviteBase = computed(() => `${window.location.origin}/invite`)
 
@@ -56,6 +57,26 @@ function editGuest(guest: Guest) {
 
 function sideLabel(side: GuestSide) {
   return side === 'bride' ? 'Khách nhà gái' : 'Khách nhà trai'
+}
+
+async function copyInviteLink(slug: string) {
+  const url = `${inviteBase.value}/${slug}`
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url)
+  } else {
+    const input = document.createElement('input')
+    input.value = url
+    document.body.append(input)
+    input.select()
+    document.execCommand('copy')
+    input.remove()
+  }
+
+  copiedSlug.value = slug
+  window.setTimeout(() => {
+    if (copiedSlug.value === slug) copiedSlug.value = null
+  }, 1800)
 }
 </script>
 
@@ -135,6 +156,9 @@ function sideLabel(side: GuestSide) {
                   <p class="text-xs uppercase tracking-[0.2em] text-[#b48245]">
                     {{ sideLabel(guest.side) }}
                   </p>
+                  <p v-if="copiedSlug === guest.slug" class="mt-1 text-xs font-semibold text-[#4f8f5a]">
+                    Đã copy link thiệp
+                  </p>
                 </div>
 
                 <div class="flex gap-2">
@@ -145,6 +169,13 @@ function sideLabel(side: GuestSide) {
                   >
                     Mở thiệp
                   </a>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-[#d9c6b0] px-3 py-1 text-xs font-semibold"
+                    @click="copyInviteLink(guest.slug)"
+                  >
+                    Copy link
+                  </button>
                   <button
                     type="button"
                     class="rounded-lg bg-[#f2e7d9] px-3 py-1 text-xs font-semibold"

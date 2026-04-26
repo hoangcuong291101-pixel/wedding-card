@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Autoplay, Pagination } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import RevealOnScroll from '@/components/RevealOnScroll.vue'
 import { useGuests } from '@/composables/useGuests'
 import { useLazyLoad } from '@/composables/useLazyLoad'
-import { weddingInfo } from '@/data/wedding'
+import { fakeFetchWedding } from '@/services/fakeApi'
+import type { WeddingInfo } from '@/types/invitation'
 
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -20,6 +21,11 @@ const { guests } = useGuests()
 const isOpened = ref(false)
 const activeFamilySide = ref<FamilySide>('groom')
 const { elRef: galleryRef, isVisible: showGallery } = useLazyLoad()
+const weddingInfo = ref<WeddingInfo | null>(null)
+
+onMounted(async () => {
+  weddingInfo.value = await fakeFetchWedding()
+})
 
 const slug = computed(() => String(route.params.slug || ''))
 
@@ -28,7 +34,8 @@ const guest = computed(() => {
 })
 
 const activeFamily = computed(() => {
-  return weddingInfo.families[activeFamilySide.value]
+  if (!weddingInfo.value) return null
+  return weddingInfo.value.families[activeFamilySide.value]
 })
 
 const swiperModules = [Autoplay, Pagination]
@@ -49,12 +56,12 @@ function guestSideLabel() {
 <template>
   <main
     class="min-h-screen bg-cover bg-center bg-fixed text-[#3e3431]"
-    :style="{ backgroundImage: `url(${weddingInfo.backgroundImage})` }"
+    :style="weddingInfo ? { backgroundImage: `url(${weddingInfo.backgroundImage})` } : undefined"
   >
     <div class="min-h-screen bg-gradient-to-b from-[#f6f5fb]/94 via-[#fffdfa]/95 to-[#fdf7ef]/95 px-4 py-5">
       <Transition name="cover">
         <section
-          v-if="guest && !isOpened"
+          v-if="guest && !isOpened && weddingInfo"
           class="cover-panel mx-auto flex min-h-[92vh] w-full max-w-[520px] flex-col items-center justify-center rounded-[2rem] border border-[#efe4db] bg-white/85 px-7 text-center shadow-[0_26px_65px_-32px_rgba(73,51,49,0.85)]"
         >
           <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">Wedding Invitation</p>
@@ -82,7 +89,7 @@ function guestSideLabel() {
       </Transition>
 
       <Transition name="content">
-        <section v-if="guest && isOpened" class="mx-auto min-h-screen w-full max-w-[560px] py-4">
+        <section v-if="guest && isOpened && weddingInfo" class="mx-auto min-h-screen w-full max-w-[560px] py-4">
           <div class="invitation-shell rounded-[2.2rem] px-6 py-9 text-center">
             <RevealOnScroll as="section" :delay="220" direction="left" class="ornament-panel rounded-[1.6rem] px-6 py-8">
               <p class="font-serif text-xs uppercase tracking-[0.45em] text-[#b48d63]">Save the date</p>
@@ -197,7 +204,7 @@ function guestSideLabel() {
               </div>
 
               <Transition name="family" mode="out-in">
-                <div :key="activeFamilySide" class="mt-4 rounded-3xl bg-white/80 p-5 text-left ring-1 ring-[#f3e4d9]">
+                <div v-if="activeFamily" :key="activeFamilySide" class="mt-4 rounded-3xl bg-white/80 p-5 text-left ring-1 ring-[#f3e4d9]">
                   <p class="font-serif text-lg font-semibold text-[#5a433d]">
                     {{ activeFamily.label }}
                   </p>
@@ -237,7 +244,13 @@ function guestSideLabel() {
         </section>
       </Transition>
 
-      <section v-if="!guest" class="flex min-h-screen items-center justify-center px-6 text-center">
+      <section v-if="!weddingInfo" class="flex min-h-screen items-center justify-center px-6 text-center">
+        <div class="rounded-3xl bg-white/95 p-6 shadow-lg ring-1 ring-[#f0dad3]">
+          <p class="text-sm text-[#7b6666]">Đang tải dữ liệu thiệp (fake API)...</p>
+        </div>
+      </section>
+
+      <section v-else-if="!guest" class="flex min-h-screen items-center justify-center px-6 text-center">
         <div class="rounded-3xl bg-white/95 p-6 shadow-lg ring-1 ring-[#f0dad3]">
           <h1 class="font-serif text-2xl font-semibold">Không tìm thấy thiệp mời</h1>
 

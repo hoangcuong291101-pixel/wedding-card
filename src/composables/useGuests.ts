@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 
-import type { Guest, GuestSide } from '@/data/guests'
-import { guests as seedGuests } from '@/data/guests'
+import { fakeFetchGuests } from '@/services/fakeApi'
+import type { Guest, GuestSide } from '@/types/invitation'
 
 const STORAGE_KEY = 'wedding-guests'
 const guestsState = ref<Guest[]>([])
@@ -18,19 +18,20 @@ function slugify(value: string) {
     .replace(/-+/g, '-')
 }
 
-function loadGuests() {
+async function loadGuests() {
   if (hasInitialized.value) return
 
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    guestsState.value = [...seedGuests]
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(guestsState.value))
+  if (raw) {
+    const parsed = JSON.parse(raw) as Guest[]
+    guestsState.value = Array.isArray(parsed) ? parsed : []
     hasInitialized.value = true
     return
   }
 
-  const parsed = JSON.parse(raw) as Guest[]
-  guestsState.value = Array.isArray(parsed) ? parsed : [...seedGuests]
+  const data = await fakeFetchGuests()
+  guestsState.value = [...data]
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(guestsState.value))
   hasInitialized.value = true
 }
 
@@ -80,7 +81,7 @@ function removeGuest(slug: string) {
 }
 
 export function useGuests() {
-  loadGuests()
+  void loadGuests()
 
   return {
     guests: computed(() => guestsState.value),
