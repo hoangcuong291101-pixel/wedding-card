@@ -11,8 +11,8 @@ const props = withDefaults(
   }>(),
   {
     as: 'div',
-    delay: 0,
-    y: 22,
+    delay: 140,
+    y: 28,
   },
 )
 
@@ -39,12 +39,12 @@ const revealStyle = computed(() => ({
 <style scoped>
 .reveal-section {
   opacity: 0;
-  transform: translateY(var(--reveal-y, 22px)) scale(0.985);
-  filter: blur(1px);
+  transform: translateY(var(--reveal-y, 28px)) scale(0.982);
+  filter: blur(2px);
   transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.95s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.95s cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 0.95s cubic-bezier(0.2, 0.7, 0.2, 1);
   will-change: opacity, transform;
 }
 
