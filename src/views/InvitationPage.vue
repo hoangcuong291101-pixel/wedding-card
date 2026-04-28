@@ -149,6 +149,17 @@ function guestPlaceLabel() {
   return guest.value?.side === 'bride' ? 'Tại tư gia nhà gái' : 'Tại tư gia nhà trai'
 }
 
+function normalizePhoneForTel(phone?: string) {
+  const raw = String(phone ?? '').trim()
+  if (!raw) return ''
+
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return ''
+  if (digits.startsWith('0')) return digits
+  if (digits.startsWith('84') && digits.length > 2) return `0${digits.slice(2)}`
+  return `0${digits}`
+}
+
 function parseFromInviteTime(value: string): Date | null {
   const match = value.match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
   if (!match) return null
@@ -601,7 +612,7 @@ const invitationMoment = computed(() => {
 
                     <div class="mt-4 flex gap-2">
                       <a
-                        :href="`tel:${activeFamily.phone}`"
+                        :href="`tel:${normalizePhoneForTel(activeFamily.phone)}`"
                         class="flex-1 rounded-full bg-[#fff8ef] px-4 py-2 text-center text-sm font-medium text-[#a17438] ring-1 ring-[#eed9c4] transition hover:bg-[#fff1de]"
                       >
                         Gọi
