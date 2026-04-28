@@ -4,7 +4,10 @@ import { apiRemoveGuest, apiUpsertGuest, fakeFetchGuests } from '@/services/fake
 import type { Guest, GuestSide } from '@/types/invitation'
 
 const STORAGE_KEY = 'wedding-guests'
-const USE_REMOTE = Boolean(import.meta.env.VITE_APPS_SCRIPT_URL)
+const USE_REMOTE = Boolean(
+  import.meta.env.VITE_APPS_SCRIPT_URL ||
+  (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY),
+)
 const guestsState = ref<Guest[]>([])
 const hasInitialized = ref(false)
 
