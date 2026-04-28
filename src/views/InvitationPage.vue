@@ -12,7 +12,6 @@ import type { WeddingInfo } from '@/types/invitation'
 import brideImg from '@/assets/images/bride.jpg'
 import groomImg from '@/assets/images/groom.jpg'
 import musicCoverImg from '@/assets/images/music.jpg'
-import instaImg from '@/assets/images/insta.jpg'
 import musicSrc from '@/assets/music.mp3'
 
 import 'swiper/css'
@@ -96,6 +95,35 @@ const activeTimeline = computed(() => {
 
 const swiperModules = [Autoplay, Pagination]
 
+const instaCaptions = [
+  'Hạnh phúc khi có bạn đồng hành trong khoảnh khắc này 🤍',
+  'Một ngày thật đẹp để bắt đầu hành trình mới cùng nhau ✨',
+  'Cảm ơn bạn đã đến và chia sẻ niềm vui cùng chúng mình 🥂',
+  'Lưu giữ kỷ niệm ngọt ngào trong ngày trọng đại 💍',
+]
+
+const instaPosts = computed(() => {
+  const images = weddingInfo.value?.galleryImages ?? []
+  if (images.length === 0) return []
+
+  const postCount = 4
+  const chunkSize = Math.max(1, Math.ceil(images.length / postCount))
+
+  return Array.from({ length: postCount }, (_, index) => {
+    const start = index * chunkSize
+    const group = images.slice(start, start + chunkSize)
+    const fallbackImage = images[index % images.length]
+    const postImages = group.length > 0 ? group : [fallbackImage]
+
+    return {
+      id: `post-${index + 1}`,
+      images: postImages,
+      caption: instaCaptions[index % instaCaptions.length],
+      avatar: index % 2 === 0 ? groomImg : brideImg,
+    }
+  })
+})
+
 function openInvitation() {
   isOpened.value = true
   // Auto-play music after a short delay to let the DOM settle
@@ -118,7 +146,7 @@ function selectFamilySide(side: FamilySide) {
 }
 
 function guestPlaceLabel() {
-  return guest.value?.side === 'bride' ? 'Tại nhà gái' : 'Tại nhà trai'
+  return guest.value?.side === 'bride' ? 'Tại tư gia nhà gái' : 'Tại tư gia nhà trai'
 }
 
 function parseFromInviteTime(value: string): Date | null {
@@ -184,17 +212,17 @@ const invitationMoment = computed(() => {
             Wedding Invitation
           </p>
 
-          <h1 class="mt-4 text-5xl text-[#6f4f4a] title-script">
-            {{ weddingInfo.groomName }}
-            <span class="mx-2 inline-block text-3xl">&</span>
-            {{ weddingInfo.brideName }}
-          </h1>
+          <div
+            class="name-emblem mx-auto mt-6 flex h-60 w-60 flex-col items-center justify-center rounded-full"
+          >
+            <p class="title-script text-5xl text-[#58413f]">{{ weddingInfo.groomName }}</p>
+            <p class="my-1 text-3xl text-[#8f7a76]">&</p>
+            <p class="title-script text-5xl text-[#58413f]">{{ weddingInfo.brideName }}</p>
+          </div>
 
-          <p class="mt-6 text-sm text-[#7d6960]">Trân trọng kính mời</p>
+          <p class="mt-6 text-xl text-[#7d6960]">Trân trọng kính mời</p>
 
-          <h2 class="mt-2 font-serif text-3xl font-semibold text-[#56413d]">
-            {{ guest.name }}
-          </h2>
+          <h2 class="title-script mt-1 text-7xl leading-none text-[#5b3f3b]">{{ guest.name }}</h2>
 
           <button
             class="mt-10 rounded-full border border-[#d7b076] bg-[#c89a57] px-10 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white shadow-[0_16px_34px_-20px_rgba(131,95,45,0.9)] transition duration-500 hover:-translate-y-0.5 hover:bg-[#b98c4c] active:scale-95"
@@ -242,6 +270,15 @@ const invitationMoment = computed(() => {
               direction="right"
               class="mt-7 rounded-[1.6rem] bg-[#fffdfa] p-6 ring-1 ring-[#eee2d6]"
             >
+              <p class="mt-5 text-s uppercase tracking-[0.22em] text-[#a08070]">
+                Trân trọng kính mời
+              </p>
+              <p class="title-script mt-1 text-7xl leading-none text-[#5b3f3b]">{{ guest.name }}</p>
+              <p class="mt-3 text-s leading-relaxed text-[#7b6666]">Tham dự lễ thành hôn</p>
+              <p class="mt-1 text-s uppercase tracking-[0.22em] text-[#b17e3a]">
+                {{ guestPlaceLabel() }}
+              </p>
+
               <!-- Top decoration -->
               <div class="flex items-center justify-center gap-3 text-[#c89a57]">
                 <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
@@ -284,14 +321,6 @@ const invitationMoment = computed(() => {
                 <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
               </div>
 
-              <p class="mt-5 text-s uppercase tracking-[0.22em] text-[#a08070]">
-                Trân trọng kính mời
-              </p>
-              <p class="title-script mt-1 text-7xl leading-none text-[#5b3f3b]">{{ guest.name }}</p>
-              <p class="mt-3 text-s leading-relaxed text-[#7b6666]">Tham dự lễ thành hôn</p>
-              <p class="mt-1 text-s uppercase tracking-[0.22em] text-[#b17e3a]">
-                {{ guestPlaceLabel() }}
-              </p>
               <p class="mt-3 text-s leading-relaxed text-[#7b6666]">
                 Sự có mặt của bạn là niềm vinh dự cho gia đình chúng tôi
               </p>
@@ -337,7 +366,7 @@ const invitationMoment = computed(() => {
                 <!-- Song info -->
                 <div class="mt-6 flex items-start justify-between">
                   <div class="text-left">
-                    <p class="text-base font-bold text-[#1a1a1a]">Nhạc nền đám cưới</p>
+                    <p class="text-base font-bold text-[#1a1a1a]">Story love</p>
                     <p class="mt-0.5 text-sm text-[#9b8070]">
                       {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }}
                     </p>
@@ -428,7 +457,7 @@ const invitationMoment = computed(() => {
               <div class="flex items-center justify-center gap-3 text-[#c89a57]">
                 <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
                 <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
-                  Khoảnh khắc
+                  Chúng tôi là
                 </p>
                 <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
               </div>
@@ -510,124 +539,6 @@ const invitationMoment = computed(() => {
                 </div>
               </RevealOnScroll>
             </div>
-
-            <RevealOnScroll as="section" :delay="650" direction="left" class="mt-8">
-              <div class="flex items-center justify-center gap-3 text-[#c89a57]">
-                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
-                <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
-                  Khoảnh khắc
-                </p>
-                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
-              </div>
-              <div
-                ref="galleryRef"
-                class="gallery-frame mt-4 overflow-hidden rounded-[1.6rem] border-2 border-[#d4b896] bg-white shadow-lg"
-              >
-                <div v-if="!showGallery" class="h-64 animate-pulse rounded-[1.6rem] bg-[#f2dfd8]" />
-
-                <Swiper
-                  v-else
-                  :autoplay="{ delay: 3200, disableOnInteraction: false }"
-                  :loop="true"
-                  :modules="swiperModules"
-                  :pagination="true"
-                  class="w-full"
-                >
-                  <SwiperSlide v-for="image in weddingInfo.galleryImages" :key="image">
-                    <div class="aspect-square w-full overflow-hidden">
-                      <img
-                        :src="image"
-                        alt="Ảnh cưới"
-                        class="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                  </SwiperSlide>
-                </Swiper>
-              </div>
-            </RevealOnScroll>
-
-            <!-- Instagram-style post -->
-            <RevealOnScroll as="section" :delay="750" direction="left" class="mt-10">
-              <div
-                class="mx-auto max-w-sm overflow-hidden rounded-2xl bg-white shadow-[0_8px_32px_-12px_rgba(72,33,33,0.3)] ring-1 ring-[#f0dfd4]"
-              >
-                <!-- Post header -->
-                <div class="flex items-center gap-3 px-4 py-3">
-                  <div class="relative h-9 w-9 flex-shrink-0">
-                    <img
-                      :src="groomImg"
-                      alt="avatar"
-                      class="h-9 w-9 rounded-full object-cover ring-2 ring-[#c89a57] ring-offset-1"
-                    />
-                  </div>
-                  <div class="flex flex-1 flex-col text-left">
-                    <p class="text-sm font-semibold leading-none text-[#3e3431]">
-                      {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }}
-                    </p>
-                    <p class="mt-0.5 text-xs text-[#9b8070]">{{ weddingInfo.weddingDate }}</p>
-                  </div>
-                  <!-- Instagram dots -->
-                  <svg class="h-5 w-5 text-[#9b8070]" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="5" cy="12" r="1.5" />
-                    <circle cx="12" cy="12" r="1.5" />
-                    <circle cx="19" cy="12" r="1.5" />
-                  </svg>
-                </div>
-
-                <!-- Main photo -->
-                <div class="aspect-square w-full overflow-hidden bg-[#f2dfd8]">
-                  <img :src="instaImg" alt="Ảnh cưới" class="h-full w-full object-cover" />
-                </div>
-
-                <!-- Action bar -->
-                <div class="flex items-center gap-4 px-4 pt-3">
-                  <!-- Heart -->
-                  <svg class="h-6 w-6 text-[#b83a3a]" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35z"
-                    />
-                  </svg>
-                  <!-- Comment -->
-                  <svg
-                    class="h-6 w-6 text-[#9b8070]"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  <!-- Share -->
-                  <svg
-                    class="h-6 w-6 text-[#9b8070]"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </div>
-
-                <!-- Caption -->
-                <div class="px-4 pb-4 pt-2 text-left">
-                  <p class="text-sm leading-relaxed text-[#3e3431]">
-                    <span class="font-semibold">{{ weddingInfo.groomName }}</span>
-                    {{ ' ' }}Hạnh phúc khi được đón bạn tham dự ngày trọng đại của chúng tôi 🤍
-                  </p>
-                  <p class="mt-1 text-xs text-[#9b8070]">{{ weddingInfo.venue.name }}</p>
-                </div>
-              </div>
-            </RevealOnScroll>
 
             <RevealOnScroll
               as="section"
@@ -737,6 +648,187 @@ const invitationMoment = computed(() => {
                   </Transition>
                 </div>
               </div>
+            </RevealOnScroll>
+
+            <RevealOnScroll as="section" :delay="840" direction="left" class="mt-8">
+              <div class="flex items-center justify-center gap-3 text-[#c89a57]">
+                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
+                <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
+                  Khoảnh khắc
+                </p>
+                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
+              </div>
+
+              <div
+                ref="galleryRef"
+                class="gallery-frame mt-4 overflow-hidden rounded-[1.6rem] border-2 border-[#d4b896] bg-white shadow-lg"
+              >
+                <div
+                  v-if="!showGallery"
+                  class="h-[42rem] animate-pulse rounded-[1.6rem] bg-[#f2dfd8]"
+                />
+
+                <div v-else class="space-y-6 px-3 py-4 sm:px-4">
+                  <article v-for="post in instaPosts" :key="post.id">
+                    <div
+                      class="mx-auto max-w-sm overflow-hidden rounded-2xl bg-white ring-1 ring-[#f0dfd4]"
+                    >
+                      <div class="flex items-center gap-3 px-4 py-3">
+                        <div class="relative h-9 w-9 flex-shrink-0">
+                          <img
+                            :src="post.avatar"
+                            alt="avatar"
+                            class="h-9 w-9 rounded-full object-cover ring-2 ring-[#c89a57] ring-offset-1"
+                          />
+                        </div>
+                        <div class="flex flex-1 flex-col text-left">
+                          <p class="text-sm font-semibold leading-none text-[#3e3431]">
+                            {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }}
+                          </p>
+                          <p class="mt-0.5 text-xs text-[#9b8070]">
+                            {{ weddingInfo.weddingDate }}
+                          </p>
+                        </div>
+                        <svg class="h-5 w-5 text-[#9b8070]" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="5" cy="12" r="1.5" />
+                          <circle cx="12" cy="12" r="1.5" />
+                          <circle cx="19" cy="12" r="1.5" />
+                        </svg>
+                      </div>
+
+                      <Swiper
+                        :autoplay="
+                          post.images.length > 1
+                            ? { delay: 4600, disableOnInteraction: false }
+                            : false
+                        "
+                        :loop="post.images.length > 1"
+                        :modules="swiperModules"
+                        :nested="true"
+                        :pagination="post.images.length > 1"
+                        :speed="950"
+                        class="insta-post-swiper w-full"
+                      >
+                        <SwiperSlide v-for="image in post.images" :key="`${post.id}-${image}`">
+                          <div class="aspect-square w-full overflow-hidden bg-[#f2dfd8]">
+                            <img
+                              :src="image"
+                              alt="Ảnh cưới"
+                              class="insta-slide-image h-full w-full object-cover"
+                            />
+                          </div>
+                        </SwiperSlide>
+                      </Swiper>
+
+                      <div class="flex items-center gap-4 px-4 pt-3">
+                        <svg class="h-6 w-6 text-[#b83a3a]" fill="currentColor" viewBox="0 0 24 24">
+                          <path
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35z"
+                          />
+                        </svg>
+                        <svg
+                          class="h-6 w-6 text-[#9b8070]"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                        <svg
+                          class="h-6 w-6 text-[#9b8070]"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
+
+                      <div class="px-4 pb-4 pt-2 text-left">
+                        <p class="text-sm leading-relaxed text-[#3e3431]">
+                          <span class="font-semibold">{{ weddingInfo.groomName }}</span>
+                          {{ ' ' }}{{ post.caption }}
+                        </p>
+                        <p class="mt-1 text-xs text-[#9b8070]">{{ weddingInfo.venue.name }}</p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </RevealOnScroll>
+
+            <!-- Thank You + QR Section -->
+            <RevealOnScroll as="section" :delay="960" direction="up" class="mt-10 pb-4">
+              <!-- Divider -->
+              <div class="flex items-center justify-center gap-3 text-[#c89a57]">
+                <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
+                <span class="text-xl">✦</span>
+                <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
+              </div>
+
+              <!-- Thank you message -->
+              <div class="mt-8 px-2 text-center">
+                <p class="title-script text-5xl text-[#6f4f4a]">Cảm ơn bạn</p>
+                <p class="mt-4 text-sm leading-7 text-[#7b6666]">
+                  Sự có mặt và lời chúc phúc của bạn là món quà quý giá nhất<br />
+                  trong ngày trọng đại của chúng mình. 💍
+                </p>
+                <p class="mt-2 text-sm leading-7 text-[#7b6666]">
+                  Nếu bạn muốn gửi lời chúc hoặc quà mừng, chúng mình xin trân trọng đón nhận.
+                </p>
+              </div>
+
+              <!-- QR transfer -->
+              <div
+                v-if="weddingInfo.bankAccount"
+                class="mx-auto mt-8 max-w-xs overflow-hidden rounded-3xl bg-white ring-1 ring-[#f0dfd4] shadow-[0_12px_40px_-16px_rgba(72,33,33,0.25)]"
+              >
+                <!-- Card header -->
+                <div class="bg-[#c89a57] px-5 py-3 text-center">
+                  <p class="text-xs font-semibold uppercase tracking-[0.3em] text-white">
+                    Mừng cưới chuyển khoản
+                  </p>
+                </div>
+
+                <!-- QR image -->
+                <div class="flex justify-center px-6 pt-6">
+                  <img
+                    :src="`https://img.vietqr.io/image/${weddingInfo.bankAccount.bankId}-${weddingInfo.bankAccount.accountNumber}-compact2.png?accountName=${encodeURIComponent(weddingInfo.bankAccount.accountName)}`"
+                    alt="QR chuyển khoản"
+                    class="h-52 w-52 rounded-2xl object-contain"
+                    loading="lazy"
+                  />
+                </div>
+
+                <!-- Account info -->
+                <div class="px-6 pb-6 pt-4 text-center">
+                  <p class="text-xs uppercase tracking-[0.25em] text-[#b48d63]">
+                    {{ weddingInfo.bankAccount.bankName }}
+                  </p>
+                  <p class="mt-1 font-mono text-xl font-bold tracking-widest text-[#3e3431]">
+                    {{ weddingInfo.bankAccount.accountNumber }}
+                  </p>
+                  <p class="mt-1 text-sm font-medium text-[#56413d]">
+                    {{ weddingInfo.bankAccount.accountName }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Closing message -->
+              <p class="mt-8 text-center text-xs leading-6 text-[#a09080] italic">
+                {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }} ·
+                {{ weddingInfo.weddingDate }}
+              </p>
             </RevealOnScroll>
           </div>
         </section>
@@ -937,6 +1029,24 @@ const invitationMoment = computed(() => {
   transform: translateY(-10px) scale(0.985);
 }
 
+.insta-slide-image {
+  transform: scale(1.035);
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:deep(.insta-post-swiper .swiper-slide) {
+  opacity: 0.55;
+  transition: opacity 0.8s ease;
+}
+
+:deep(.insta-post-swiper .swiper-slide-active) {
+  opacity: 1;
+}
+
+:deep(.insta-post-swiper .swiper-slide-active .insta-slide-image) {
+  transform: scale(1);
+}
+
 @keyframes floatingIn {
   from {
     opacity: 0;
@@ -961,7 +1071,8 @@ const invitationMoment = computed(() => {
   .side-switch-enter-active,
   .side-switch-leave-active,
   .family-switch-enter-active,
-  .family-switch-leave-active {
+  .family-switch-leave-active,
+  .insta-slide-image {
     transition: none !important;
   }
 }

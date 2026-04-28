@@ -57,5 +57,11 @@
   "venue": {
     "name": "Tư gia",
     "note": "Tổ chức tại nhà riêng hai bên gia đình"
+  },
+  "bankAccount": {
+    "bankId": "MB",
+    "accountNumber": "0325415091",
+    "accountName": "NGUYEN THI HONG NGOC",
+    "bankName": "MB Bank"
   }
 }

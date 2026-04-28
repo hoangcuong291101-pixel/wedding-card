@@ -51,6 +51,7 @@ function buildWeddingFromSeed() {
     weddingDate: string
     timelines: WeddingInfo['timelines']
     venue: WeddingInfo['venue']
+    bankAccount?: WeddingInfo['bankAccount']
   }
 
   return {
@@ -64,6 +65,7 @@ function buildWeddingFromSeed() {
     weddingDate: seed.weddingDate,
     timelines: seed.timelines,
     venue: seed.venue,
+    bankAccount: seed.bankAccount,
   } satisfies WeddingInfo
 }
 

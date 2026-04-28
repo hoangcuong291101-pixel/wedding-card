@@ -43,4 +43,10 @@ export interface WeddingInfo {
     name: string
     note: string
   }
+  bankAccount?: {
+    bankId: string
+    accountNumber: string
+    accountName: string
+    bankName: string
+  }
 }
