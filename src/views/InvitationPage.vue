@@ -1034,34 +1034,37 @@ watch(showGallery, async (visible) => {
 </template>
 
 <style scoped>
-.title-script {
-  .post-reveal {
-    opacity: 0;
-    transform: translate3d(0, 32px, 0) scale(0.985);
-    filter: blur(2px);
-    transition:
-      opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
-      transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
-      filter 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
-  }
-  .post-reveal--visible {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0);
-  }
-  .typewriter-cursor {
-    animation: blink 0.7s steps(1) infinite;
-  }
-  @keyframes blink {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0;
-    }
-  }
+.post-reveal {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0) scale(0.985);
+  filter: blur(2px);
+  transition:
+    opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
 
+.post-reveal--visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+
+.typewriter-cursor {
+  animation: blink 0.7s steps(1) infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.title-script {
   font-family: 'Great Vibes', cursive;
   line-height: 1.1;
 }
