@@ -44,13 +44,15 @@ const activeTimelineSide = ref<TimelineSide>('groom')
 const editingSlug = ref<string | null>(null)
 const copiedSlug = ref<string | null>(null)
 const searchQuery = ref('')
+const sideFilter = ref<'all' | 'groom' | 'bride'>('all')
 
 const filteredGuests = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return guests.value
-  return guests.value.filter(
-    (g) => g.name.toLowerCase().includes(q) || g.slug.toLowerCase().includes(q),
-  )
+  return guests.value.filter((g) => {
+    const matchesSide = sideFilter.value === 'all' || g.side === sideFilter.value
+    const matchesQuery = !q || g.name.toLowerCase().includes(q) || g.slug.toLowerCase().includes(q)
+    return matchesSide && matchesQuery
+  })
 })
 const weddingSaved = ref(false)
 const ADMIN_PASSWORD = '2911'
@@ -515,9 +517,30 @@ async function copyInviteLink(slug: string) {
 
               <input
                 v-model="searchQuery"
-                class="mb-4 w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 text-sm outline-none focus:border-[#c99855]"
+                class="mb-3 w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 text-sm outline-none focus:border-[#c99855]"
                 placeholder="Tìm theo tên hoặc slug..."
               />
+
+              <div class="mb-4 flex gap-2">
+                <button
+                  v-for="opt in [
+                    { value: 'all', label: 'Tất cả' },
+                    { value: 'groom', label: 'Nhà trai' },
+                    { value: 'bride', label: 'Nhà gái' },
+                  ] as const"
+                  :key="opt.value"
+                  type="button"
+                  class="rounded-full px-4 py-1.5 text-xs font-semibold transition"
+                  :class="
+                    sideFilter === opt.value
+                      ? 'bg-[#c89a57] text-white shadow'
+                      : 'bg-[#fff4e7] text-[#7b6666] ring-1 ring-[#ecd8c9] hover:bg-[#fde8cc]'
+                  "
+                  @click="sideFilter = opt.value"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
 
               <div class="grid gap-3 lg:grid-cols-2">
                 <article
