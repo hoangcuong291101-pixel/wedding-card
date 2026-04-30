@@ -43,6 +43,15 @@ const activeTimelineSide = ref<TimelineSide>('groom')
 
 const editingSlug = ref<string | null>(null)
 const copiedSlug = ref<string | null>(null)
+const searchQuery = ref('')
+
+const filteredGuests = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return guests.value
+  return guests.value.filter(
+    (g) => g.name.toLowerCase().includes(q) || g.slug.toLowerCase().includes(q),
+  )
+})
 const weddingSaved = ref(false)
 const ADMIN_PASSWORD = '2911'
 const ADMIN_UNLOCK_KEY = 'wedding-admin-unlocked'
@@ -497,11 +506,22 @@ async function copyInviteLink(slug: string) {
             </form>
 
             <div class="rounded-2xl bg-[#fffdf9] p-4 ring-1 ring-[#f0e4d7] md:p-5">
-              <h2 class="mb-3 font-serif text-xl font-semibold">Danh sách khách mời</h2>
+              <div class="mb-3 flex flex-wrap items-center gap-3">
+                <h2 class="font-serif text-xl font-semibold">Danh sách khách mời</h2>
+                <span class="text-sm text-[#7f6a64]"
+                  >({{ filteredGuests.length }}/{{ guests.length }})</span
+                >
+              </div>
+
+              <input
+                v-model="searchQuery"
+                class="mb-4 w-full rounded-xl border border-[#e4d5c5] bg-white px-3 py-2 text-sm outline-none focus:border-[#c99855]"
+                placeholder="Tìm theo tên hoặc slug..."
+              />
 
               <div class="grid gap-3 lg:grid-cols-2">
                 <article
-                  v-for="guest in guests"
+                  v-for="guest in filteredGuests"
                   :key="guest.slug"
                   class="rounded-2xl border border-[#efdfcd] bg-white p-4 shadow-sm"
                 >
@@ -557,10 +577,10 @@ async function copyInviteLink(slug: string) {
                 </article>
 
                 <p
-                  v-if="guests.length === 0"
+                  v-if="filteredGuests.length === 0"
                   class="rounded-xl bg-white p-4 text-sm text-[#7f6a64]"
                 >
-                  Chưa có khách mời nào.
+                  {{ guests.length === 0 ? 'Chưa có khách mời nào.' : 'Không tìm thấy khách mời.' }}
                 </p>
               </div>
             </div>
