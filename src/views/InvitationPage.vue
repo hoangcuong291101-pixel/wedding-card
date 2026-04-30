@@ -93,6 +93,45 @@ const activeTimeline = computed(() => {
   return weddingInfo.value.timelines[activeFamilySide.value]
 })
 
+const weekDayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+
+const calendarYear = computed(() => {
+  const fromWedding = weddingInfo.value ? parseFromWeddingDate(weddingInfo.value.weddingDate) : null
+  return fromWedding?.getFullYear() ?? new Date().getFullYear()
+})
+
+const calendarCells = computed(() => {
+  const year = calendarYear.value
+  const monthIndex = 4 // Thang 5
+  // Convert JS weekday (Sun=0..Sat=6) to Monday-first index (Mon=0..Sun=6)
+  const firstDay = (new Date(year, monthIndex, 1).getDay() + 6) % 7
+  const totalDays = new Date(year, monthIndex + 1, 0).getDate()
+  const today = new Date()
+
+  const cells: Array<{
+    day: number | null
+    isWedding: boolean
+    isToday: boolean
+  }> = []
+
+  for (let i = 0; i < firstDay; i++) {
+    cells.push({ day: null, isWedding: false, isToday: false })
+  }
+
+  for (let day = 1; day <= totalDays; day++) {
+    const isWedding = day === 9 || day === 10
+    const isToday =
+      today.getFullYear() === year && today.getMonth() === monthIndex && today.getDate() === day
+    cells.push({ day, isWedding, isToday })
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({ day: null, isWedding: false, isToday: false })
+  }
+
+  return cells
+})
+
 const swiperModules = [Autoplay, Pagination]
 
 const instaCaptions = [
@@ -325,6 +364,8 @@ const invitationMoment = computed(() => {
                 {{ invitationMoment.year }}
               </p>
 
+              <p class="mt-2 text-lg font-bold tracking-[0.08em] text-[#7d5630]">Âm lịch: 24/3</p>
+
               <!-- Bottom decoration -->
               <div class="mt-4 flex items-center justify-center gap-3 text-[#c89a57]">
                 <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
@@ -550,6 +591,58 @@ const invitationMoment = computed(() => {
                 </div>
               </RevealOnScroll>
             </div>
+
+            <RevealOnScroll
+              as="section"
+              :delay="740"
+              direction="left"
+              class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]"
+            >
+              <div class="flex items-center justify-between">
+                <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Lịch cưới</p>
+                <p class="text-sm font-semibold text-[#7f6a64]">Tháng 5 / {{ calendarYear }}</p>
+              </div>
+
+              <div class="mt-4 grid grid-cols-7 gap-2 text-center">
+                <p
+                  v-for="label in weekDayLabels"
+                  :key="label"
+                  class="text-xs font-semibold uppercase tracking-[0.12em] text-[#a08a7e]"
+                >
+                  {{ label }}
+                </p>
+
+                <div
+                  v-for="(cell, idx) in calendarCells"
+                  :key="`calendar-${idx}`"
+                  class="flex h-10 items-center justify-center rounded-full text-sm font-medium"
+                  :class="
+                    !cell.day
+                      ? 'text-transparent'
+                      : cell.isWedding
+                        ? 'bg-[#c89a57] text-white shadow'
+                        : cell.isToday
+                          ? 'bg-[#fde8d3] font-semibold text-[#8a5e35] ring-1 ring-[#e5bf96]'
+                          : 'text-[#6f5a54]'
+                  "
+                >
+                  {{ cell.day || '•' }}
+                </div>
+              </div>
+
+              <div
+                class="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-[#7f6a64]"
+              >
+                <span class="inline-flex items-center gap-1.5">
+                  <span class="h-2.5 w-2.5 rounded-full bg-[#c89a57]" />
+                  Ngày cưới 9-10/5
+                </span>
+                <span class="inline-flex items-center gap-1.5">
+                  <span class="h-2.5 w-2.5 rounded-full bg-[#fde8d3] ring-1 ring-[#e5bf96]" />
+                  Ngày hiện tại
+                </span>
+              </div>
+            </RevealOnScroll>
 
             <RevealOnScroll
               as="section"
@@ -791,11 +884,16 @@ const invitationMoment = computed(() => {
               <div class="mt-8 px-2 text-center">
                 <p class="title-script text-5xl text-[#6f4f4a]">Cảm ơn bạn</p>
                 <p class="mt-4 text-sm leading-7 text-[#7b6666]">
-                  Sự có mặt và lời chúc phúc của bạn là món quà quý giá nhất<br />
-                  trong ngày trọng đại của chúng mình. 💍
+                  Thật vui vì được đón tiếp mọi người trong một dịp đặc biệt như đám cưới của chúng
+                  tôi. Chúng tôi muốn gửi đến bạn những lời cảm ơn sâu sắc nhất và để bạn biết chúng
+                  tôi rất hạnh phúc khi thấy bạn ở đó. Cảm ơn các bạn rất nhiều vì sự hiện diện cùng
+                  những lời chúc tốt đẹp mà bạn đã dành cho chúng tôi.
                 </p>
-                <p class="mt-2 text-sm leading-7 text-[#7b6666]">
-                  Nếu bạn muốn gửi lời chúc hoặc quà mừng, chúng mình xin trân trọng đón nhận.
+                <p class="mt-3 text-sm leading-7 text-[#7b6666]">
+                  Kết hôn không chỉ là chuyện hai người đến với nhau, mà là sự lựa chọn người sẽ
+                  đồng hành cùng bạn suốt đời. Là người bạn sẵn sàng chia sẻ mọi niềm vui, gánh vác
+                  mọi nỗi buồn, và cùng nhau xây dựng một tương lai hạnh phúc. Chọn đúng người, đó
+                  mới là một hành trình đầy yêu thương và thấu hiểu.
                 </p>
               </div>
 
