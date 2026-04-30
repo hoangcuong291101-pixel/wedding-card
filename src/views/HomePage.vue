@@ -74,27 +74,6 @@ function weddingDateToString(): string {
   return start || end
 }
 
-// "09:00 - 09/05/2026" → "2026-05-09T09:00"
-function inviteTimeToInput(inviteTime: string): string {
-  if (!inviteTime) return ''
-  const parts = inviteTime.split(' - ')
-  if (parts.length !== 2) return ''
-  const [time, datePart] = parts as [string, string]
-  const dateParts = datePart.split('/')
-  if (dateParts.length !== 3) return ''
-  const [dd, mm, yyyy] = dateParts
-  return `${yyyy ?? ''}-${(mm ?? '').padStart(2, '0')}-${(dd ?? '').padStart(2, '0')}T${time}`
-}
-
-// "2026-05-09T09:00" → "09:00 - 09/05/2026"
-function inputToInviteTime(value: string): string {
-  if (!value) return ''
-  const [datePart, time] = value.split('T')
-  if (!datePart || !time) return ''
-  const [yyyy, mm, dd] = datePart.split('-')
-  return `${time} - ${dd}/${mm}/${yyyy}`
-}
-
 async function initializeDashboard() {
   if (hasLoadedDashboard.value) return
   await loadWedding()
@@ -213,30 +192,6 @@ function submitTimeline() {
     timelinesForm.value[side].push(item)
   }
   resetTimelineForm()
-}
-
-function editTimelineItem(side: TimelineSide, index: number) {
-  editingTimelineSide.value = side
-  activeTimelineSide.value = side
-  editingTimelineIndex.value = index
-  const item = timelinesForm.value[side][index]
-  if (item) timelineForm.value = { ...item }
-}
-
-function removeTimelineItem(side: TimelineSide, index: number) {
-  timelinesForm.value[side].splice(index, 1)
-  if (editingTimelineSide.value === side && editingTimelineIndex.value === index) {
-    resetTimelineForm()
-  }
-}
-
-function moveTimelineItem(side: TimelineSide, index: number, dir: -1 | 1) {
-  const list = timelinesForm.value[side]
-  const next = index + dir
-  if (next < 0 || next >= list.length) return
-  const tmp = list[index]!
-  list[index] = list[next]!
-  list[next] = tmp
 }
 
 function selectTimelineSide(side: TimelineSide) {
