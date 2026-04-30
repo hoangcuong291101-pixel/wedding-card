@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Autoplay, Pagination } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import RevealOnScroll from '@/components/RevealOnScroll.vue'
@@ -199,15 +199,6 @@ function normalizePhoneForTel(phone?: string) {
   return `0${digits}`
 }
 
-function parseFromInviteTime(value: string): Date | null {
-  const match = value.match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (!match) return null
-  const [, timePart, dd, mm, yyyy] = match
-  if (!timePart) return null
-  const [hour, minute] = timePart.split(':').map(Number)
-  return new Date(Number(yyyy), Number(mm) - 1, Number(dd), hour, minute)
-}
-
 function parseFromWeddingDate(value: string): Date | null {
   const firstDate = value.split(' - ')[0]?.trim() ?? ''
   const parts = firstDate.split('/')
@@ -217,31 +208,41 @@ function parseFromWeddingDate(value: string): Date | null {
   return new Date(yyyy, mm - 1, dd, 8, 0)
 }
 
-const invitationMoment = computed(() => {
-  const fromInvite = guest.value?.inviteTime ? parseFromInviteTime(guest.value.inviteTime) : null
-  const date =
-    fromInvite ?? (weddingInfo.value ? parseFromWeddingDate(weddingInfo.value.weddingDate) : null)
-  if (!date) {
-    return {
-      weekday: 'THỨ BẢY',
-      month: 'THÁNG 4',
-      day: '26',
-      year: '2025',
-      time: '20:00',
-    }
-  }
+// ── Per-post visibility + typewriter ─────────────────────────────────────────
+const postElRefs = ref<(HTMLElement | null)[]>([null, null, null, null])
+const postVisibles = reactive([false, false, false, false])
+const typedCaptions = ref<string[]>(['', '', '', ''])
+const typewriterStarted = [false, false, false, false]
 
-  return {
-    weekday: new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(date).toUpperCase(),
-    month: new Intl.DateTimeFormat('vi-VN', { month: 'long' }).format(date).toUpperCase(),
-    day: String(date.getDate()).padStart(2, '0'),
-    year: String(date.getFullYear()),
-    time: new Intl.DateTimeFormat('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(date),
+function startTypewriter(index: number) {
+  if (typewriterStarted[index]) return
+  typewriterStarted[index] = true
+  const fullText = instaCaptions[index] ?? ''
+  let i = 0
+  const tick = () => {
+    typedCaptions.value[index] = fullText.slice(0, ++i)
+    if (i < fullText.length) setTimeout(tick, 42)
   }
+  setTimeout(tick, 650)
+}
+
+watch(showGallery, async (visible) => {
+  if (!visible) return
+  await nextTick()
+  postElRefs.value.forEach((el, index) => {
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          postVisibles[index] = true
+          startTypewriter(index)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.12 },
+    )
+    observer.observe(el)
+  })
 })
 </script>
 
@@ -336,35 +337,40 @@ const invitationMoment = computed(() => {
                 <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
               </div>
 
-              <p class="mt-4 text-sm font-semibold tracking-[0.18em] text-[#8f7f6f]">
-                {{ invitationMoment.month }}
-              </p>
+              <p class="mt-4 text-sm font-semibold tracking-[0.18em] text-[#8f7f6f]">THÁNG 5</p>
 
-              <div class="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <div
-                  class="border-t border-[#d8c7ad] pt-2 text-center text-2xl font-semibold text-[#4d4a46]"
-                >
-                  {{ invitationMoment.weekday }}
+              <div class="mt-3 flex items-center justify-center gap-3">
+                <!-- Day 09 -->
+                <div class="flex items-center gap-2">
+                  <div class="text-right">
+                    <p class="text-base font-bold leading-none text-[#4d4a46]">16:00</p>
+                    <p class="mt-0.5 text-sm font-medium text-[#7b6666]">Tối thứ bảy</p>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-7xl font-semibold leading-none text-[#8c6ca7]">09</p>
+                  </div>
                 </div>
 
-                <div class="px-2 text-center">
-                  <p class="text-7xl font-semibold leading-none text-[#8c6ca7]">
-                    {{ invitationMoment.day }}
-                  </p>
-                </div>
+                <p class="mx-1 mb-4 text-3xl font-light text-[#c89a57]">–</p>
 
-                <div
-                  class="border-t border-[#d8c7ad] pt-2 text-center text-2xl font-semibold text-[#4d4a46]"
-                >
-                  LÚC {{ invitationMoment.time }}
+                <!-- Day 10 -->
+                <div class="flex items-center gap-2">
+                  <div class="text-center">
+                    <p class="text-7xl font-semibold leading-none text-[#8c6ca7]">10</p>
+                  </div>
+                  <div class="text-left">
+                    <p class="text-base font-bold leading-none text-[#4d4a46]">10:00</p>
+                    <p class="mt-0.5 text-sm font-medium text-[#7b6666]">Trưa chủ nhật</p>
+                  </div>
                 </div>
               </div>
 
-              <p class="mt-3 text-sm font-semibold tracking-[0.16em] text-[#8f7f6f]">
-                {{ invitationMoment.year }}
-              </p>
+              <p class="mt-3 text-sm font-semibold tracking-[0.16em] text-[#8f7f6f]">2026</p>
 
-              <p class="mt-2 text-lg font-bold tracking-[0.08em] text-[#7d5630]">Âm lịch: 24/3</p>
+              <p class="mt-1 text-sm font-semibold text-[#5a4a44]">Tức ngày</p>
+              <p class="mt-0.5 text-base font-bold tracking-[0.06em] text-[#b17e3a]">
+                Âm lịch: 23-24/3
+              </p>
 
               <!-- Bottom decoration -->
               <div class="mt-4 flex items-center justify-center gap-3 text-[#c89a57]">
@@ -591,7 +597,77 @@ const invitationMoment = computed(() => {
                 </div>
               </RevealOnScroll>
             </div>
+            <RevealOnScroll
+              as="section"
+              :delay="760"
+              direction="right"
+              class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]"
+            >
+              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Thông tin hai nhà</p>
 
+              <div
+                class="mt-4 grid grid-cols-2 gap-2 rounded-full bg-[#fff4e7] p-1 ring-1 ring-[#ecd8c9]"
+              >
+                <button
+                  class="rounded-full px-4 py-2 text-sm font-medium transition"
+                  :class="
+                    activeFamilySide === 'groom'
+                      ? 'bg-[#c89a57] text-white shadow'
+                      : 'text-[#7b6666]'
+                  "
+                  type="button"
+                  @click="selectFamilySide('groom')"
+                >
+                  Nhà trai
+                </button>
+                <button
+                  class="rounded-full px-4 py-2 text-sm font-medium transition"
+                  :class="
+                    activeFamilySide === 'bride'
+                      ? 'bg-[#c89a57] text-white shadow'
+                      : 'text-[#7b6666]'
+                  "
+                  type="button"
+                  @click="selectFamilySide('bride')"
+                >
+                  Nhà gái
+                </button>
+              </div>
+
+              <div class="mt-4">
+                <Transition name="family-switch" mode="out-in">
+                  <div
+                    v-if="activeFamily"
+                    :key="`family-${activeFamilySide}`"
+                    class="rounded-3xl bg-white/80 p-5 text-left ring-1 ring-[#f3e4d9]"
+                  >
+                    <p class="font-serif text-lg font-semibold text-[#5a433d]">
+                      {{ activeFamily.label }}
+                    </p>
+                    <p class="mt-3 text-sm leading-6 text-[#7b6666]">Ông: {{ activeFamily.dad }}</p>
+                    <p class="text-sm leading-6 text-[#7b6666]">Bà : {{ activeFamily.mom }}</p>
+                    <p class="mt-3 text-sm leading-6 text-[#7b6666]">
+                      Tại: {{ activeFamily.address }}
+                    </p>
+                    <div class="mt-4 flex gap-2">
+                      <a
+                        :href="`tel:${normalizePhoneForTel(activeFamily.phone)}`"
+                        class="flex-1 rounded-full bg-[#fff8ef] px-4 py-2 text-center text-sm font-medium text-[#a17438] ring-1 ring-[#eed9c4] transition hover:bg-[#fff1de]"
+                        >Gọi</a
+                      >
+                      <a
+                        :href="activeFamily.googleMapUrl"
+                        class="flex-1 rounded-full bg-[#c89a57] px-4 py-2 text-center text-sm font-medium text-white shadow transition hover:bg-[#b98b4b]"
+                        target="_blank"
+                        >Bản đồ</a
+                      >
+                    </div>
+                  </div>
+                </Transition>
+              </div>
+            </RevealOnScroll>
+
+            <!-- Lịch cưới (calendar) -->
             <RevealOnScroll
               as="section"
               :delay="740"
@@ -611,7 +687,6 @@ const invitationMoment = computed(() => {
                 >
                   {{ label }}
                 </p>
-
                 <div
                   v-for="(cell, idx) in calendarCells"
                   :key="`calendar-${idx}`"
@@ -644,117 +719,101 @@ const invitationMoment = computed(() => {
               </div>
             </RevealOnScroll>
 
+            <!-- Lịch trình (hardcoded) -->
             <RevealOnScroll
               as="section"
-              :delay="760"
-              direction="right"
+              :delay="200"
+              direction="up"
               class="mt-7 rounded-3xl bg-[#fffaf6] p-5 ring-1 ring-[#f0dfd4]"
             >
-              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">
-                Thông tin và lịch trình
+              <p class="text-xs uppercase tracking-[0.3em] text-[#b48d63]">Lịch trình</p>
+
+              <p class="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-[#b17e3a]">
+                Dùng Tiệc · 09–10/05
               </p>
-
-              <div
-                class="mt-4 grid grid-cols-2 gap-2 rounded-full bg-[#fff4e7] p-1 ring-1 ring-[#ecd8c9]"
-              >
-                <button
-                  class="rounded-full px-4 py-2 text-sm font-medium transition"
-                  :class="
-                    activeFamilySide === 'groom'
-                      ? 'bg-[#c89a57] text-white shadow'
-                      : 'text-[#7b6666]'
-                  "
-                  type="button"
-                  @click="selectFamilySide('groom')"
-                >
-                  Nhà trai
-                </button>
-
-                <button
-                  class="rounded-full px-4 py-2 text-sm font-medium transition"
-                  :class="
-                    activeFamilySide === 'bride'
-                      ? 'bg-[#c89a57] text-white shadow'
-                      : 'text-[#7b6666]'
-                  "
-                  type="button"
-                  @click="selectFamilySide('bride')"
-                >
-                  Nhà gái
-                </button>
+              <div class="mt-3 space-y-3 text-left">
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">15:30 · 09/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">Đón khách</h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Chúng mình rất vui khi được đón bạn đến chung vui cùng gia đình trong buổi tối
+                    đặc biệt này!
+                  </p>
+                </div>
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">16:00 · 09/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
+                    Bữa cơm thân mật
+                  </h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Cùng nhau dùng bữa cơm thân mật và nâng ly mừng hạnh phúc của chúng mình nhé!
+                  </p>
+                </div>
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">09:00 · 10/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">Đón khách</h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Chúng mình rất vui khi được đón bạn đến chung vui trong buổi sáng ngày trọng
+                    đại!
+                  </p>
+                </div>
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">10:00 · 10/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
+                    Bữa cơm thân mật
+                  </h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Cùng nhau dùng bữa cơm thân mật và nâng ly mừng hạnh phúc của chúng mình nhé!
+                  </p>
+                </div>
               </div>
 
-              <div class="mt-4">
-                <Transition name="family-switch" mode="out-in">
-                  <div
-                    v-if="activeFamily"
-                    :key="`family-${activeFamilySide}`"
-                    class="rounded-3xl bg-white/80 p-5 text-left ring-1 ring-[#f3e4d9]"
-                  >
-                    <p class="font-serif text-lg font-semibold text-[#5a433d]">
-                      {{ activeFamily.label }}
-                    </p>
-
-                    <p class="mt-3 text-sm leading-6 text-[#7b6666]">Ông: {{ activeFamily.dad }}</p>
-
-                    <p class="text-sm leading-6 text-[#7b6666]">Bà : {{ activeFamily.mom }}</p>
-
-                    <p class="mt-3 text-sm leading-6 text-[#7b6666]">
-                      Tại: {{ activeFamily.address }}
-                    </p>
-
-                    <div class="mt-4 flex gap-2">
-                      <a
-                        :href="`tel:${normalizePhoneForTel(activeFamily.phone)}`"
-                        class="flex-1 rounded-full bg-[#fff8ef] px-4 py-2 text-center text-sm font-medium text-[#a17438] ring-1 ring-[#eed9c4] transition hover:bg-[#fff1de]"
-                      >
-                        Gọi
-                      </a>
-
-                      <a
-                        :href="activeFamily.googleMapUrl"
-                        class="flex-1 rounded-full bg-[#c89a57] px-4 py-2 text-center text-sm font-medium text-white shadow transition hover:bg-[#b98b4b]"
-                        target="_blank"
-                      >
-                        Bản đồ
-                      </a>
-                    </div>
-                  </div>
-                </Transition>
-
-                <div class="mt-5 space-y-3 text-left">
-                  <p class="text-sm font-semibold uppercase tracking-[0.2em] text-[#b17e3a]">
-                    Lịch trình {{ activeFamilySide === 'groom' ? 'nhà trai' : 'nhà gái' }}
+              <p class="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#b17e3a]">
+                Lễ cưới · 10/05
+              </p>
+              <div class="mt-3 space-y-3 text-left">
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#8c6ca7]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">04:00 · 10/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
+                    Chuẩn bị đón dâu
+                  </h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Bắt đầu những bước chuẩn bị quan trọng để sẵn sàng đón dâu về nhà trong ngày
+                    trọng đại!
                   </p>
-                  <Transition name="side-switch" mode="out-in">
-                    <div :key="activeFamilySide" class="space-y-3">
-                      <div
-                        v-for="(item, index) in activeTimeline"
-                        :key="`${activeFamilySide}-${item.time}-${item.title}-${index}`"
-                        class="timeline-card relative rounded-3xl p-5 pl-7"
-                        :style="{ transitionDelay: `${300 + index * 140}ms` }"
-                      >
-                        <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#c89a57]" />
-
-                        <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">
-                          {{ item.time }} · {{ item.date }}
-                        </p>
-
-                        <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
-                          {{ item.title }}
-                        </h3>
-
-                        <p class="mt-1 text-sm leading-6 text-[#7b6660]">
-                          {{ item.description }}
-                        </p>
-                      </div>
-                    </div>
-                  </Transition>
+                </div>
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#8c6ca7]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">08:00 · 10/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
+                    Hôn lễ tại nhà gái
+                  </h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Cùng tham dự lễ thành hôn ý nghĩa tại gia đình nhà gái — khoảnh khắc thiêng
+                    liêng và đáng nhớ!
+                  </p>
+                </div>
+                <div class="timeline-card relative rounded-3xl p-5 pl-7">
+                  <div class="absolute left-3 top-6 h-3 w-3 rounded-full bg-[#8c6ca7]" />
+                  <p class="text-sm font-semibold tracking-wide text-[#b17e3a]">13:00 · 10/05</p>
+                  <h3 class="mt-2 font-serif text-lg font-semibold text-[#4f3d39]">
+                    Hôn lễ tại nhà trai
+                  </h3>
+                  <p class="mt-1 text-sm leading-6 text-[#7b6660]">
+                    Đón cô dâu về nhà trai và tổ chức hôn lễ — cùng chúc mừng đôi uyên ương bắt đầu
+                    hành trình mới!
+                  </p>
                 </div>
               </div>
             </RevealOnScroll>
 
-            <RevealOnScroll as="section" :delay="840" direction="left" class="mt-8">
+            <!-- Khoảnh khắc (per-post reveal) -->
+            <section class="mt-8">
               <div class="flex items-center justify-center gap-3 text-[#c89a57]">
                 <div class="h-0.5 flex-1 bg-gradient-to-r from-transparent to-[#c89a57]" />
                 <p class="font-serif text-xs uppercase tracking-[0.35em] text-[#b48d63]">
@@ -762,20 +821,26 @@ const invitationMoment = computed(() => {
                 </p>
                 <div class="h-0.5 flex-1 bg-gradient-to-l from-transparent to-[#c89a57]" />
               </div>
-
-              <div
-                ref="galleryRef"
-                class="gallery-frame mt-4 overflow-hidden rounded-[1.6rem] border-2 border-[#d4b896] bg-white shadow-lg"
-              >
+              <div ref="galleryRef" class="mt-4">
                 <div
                   v-if="!showGallery"
                   class="h-[42rem] animate-pulse rounded-[1.6rem] bg-[#f2dfd8]"
                 />
-
                 <div v-else class="space-y-6 px-3 py-4 sm:px-4">
-                  <article v-for="post in instaPosts" :key="post.id">
+                  <div
+                    v-for="(post, index) in instaPosts"
+                    :key="post.id"
+                    :ref="
+                      (el) => {
+                        if (el) postElRefs[index] = el as HTMLElement
+                      }
+                    "
+                    class="post-reveal"
+                    :class="{ 'post-reveal--visible': postVisibles[index] }"
+                    :style="{ transitionDelay: '120ms' }"
+                  >
                     <div
-                      class="mx-auto max-w-sm overflow-hidden rounded-2xl bg-white ring-1 ring-[#f0dfd4]"
+                      class="mx-auto max-w-sm overflow-hidden rounded-2xl bg-white ring-1 ring-[#f0dfd4] gallery-frame shadow-lg"
                     >
                       <div class="flex items-center gap-3 px-4 py-3">
                         <div class="relative h-9 w-9 flex-shrink-0">
@@ -789,9 +854,7 @@ const invitationMoment = computed(() => {
                           <p class="text-sm font-semibold leading-none text-[#3e3431]">
                             {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }}
                           </p>
-                          <p class="mt-0.5 text-xs text-[#9b8070]">
-                            {{ weddingInfo.weddingDate }}
-                          </p>
+                          <p class="mt-0.5 text-xs text-[#9b8070]">{{ weddingInfo.weddingDate }}</p>
                         </div>
                         <svg class="h-5 w-5 text-[#9b8070]" fill="currentColor" viewBox="0 0 24 24">
                           <circle cx="5" cy="12" r="1.5" />
@@ -799,7 +862,6 @@ const invitationMoment = computed(() => {
                           <circle cx="19" cy="12" r="1.5" />
                         </svg>
                       </div>
-
                       <Swiper
                         :autoplay="
                           post.images.length > 1
@@ -823,7 +885,6 @@ const invitationMoment = computed(() => {
                           </div>
                         </SwiperSlide>
                       </Swiper>
-
                       <div class="flex items-center gap-4 px-4 pt-3">
                         <svg class="h-6 w-6 text-[#b83a3a]" fill="currentColor" viewBox="0 0 24 24">
                           <path
@@ -857,19 +918,26 @@ const invitationMoment = computed(() => {
                           />
                         </svg>
                       </div>
-
                       <div class="px-4 pb-4 pt-2 text-left">
                         <p class="text-sm leading-relaxed text-[#3e3431]">
                           <span class="font-semibold">{{ weddingInfo.groomName }}</span>
-                          {{ ' ' }}{{ post.caption }}
+                          {{ ' ' }}{{ typedCaptions[index]
+                          }}<span
+                            v-if="
+                              (typedCaptions[index] ?? '').length <
+                              (instaCaptions[index]?.length ?? 0)
+                            "
+                            class="typewriter-cursor"
+                            >|</span
+                          >
                         </p>
                         <p class="mt-1 text-xs text-[#9b8070]">{{ weddingInfo.venue.name }}</p>
                       </div>
                     </div>
-                  </article>
+                  </div>
                 </div>
               </div>
-            </RevealOnScroll>
+            </section>
 
             <!-- Thank You + QR Section -->
             <RevealOnScroll as="section" :delay="960" direction="up" class="mt-10 pb-4">
@@ -934,9 +1002,13 @@ const invitationMoment = computed(() => {
               </div>
 
               <!-- Closing message -->
-              <p class="mt-8 text-center text-xs leading-6 text-[#a09080] italic">
-                {{ weddingInfo.groomName }} &amp; {{ weddingInfo.brideName }} ·
-                {{ weddingInfo.weddingDate }}
+              <p class="mt-8 text-center text-s leading-6 text-[#523315] italic">
+                Thiệp mời được thiết kế và phát triển bởi
+                <a
+                  href="https://web.facebook.com/hoang.cuong.505575/about"
+                  class="font-medium text-[#423c36] underline"
+                  >Hoàng Cường</a
+                >
               </p>
             </RevealOnScroll>
           </div>
@@ -968,6 +1040,33 @@ const invitationMoment = computed(() => {
 
 <style scoped>
 .title-script {
+  .post-reveal {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0) scale(0.985);
+    filter: blur(2px);
+    transition:
+      opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+      transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+      filter 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .post-reveal--visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+  .typewriter-cursor {
+    animation: blink 0.7s steps(1) infinite;
+  }
+  @keyframes blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
   font-family: 'Great Vibes', cursive;
   line-height: 1.1;
 }
